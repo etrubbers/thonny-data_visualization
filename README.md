@@ -1,6 +1,6 @@
 # Data visualization plug-in for Thonny
 
-This is a plug-in for `Thonny IDE <https://thonny.org>`_, which adds possibility to 
+This is a plug-in for `Thonny IDE <https://thonny.org>`, which adds possibility to 
 visualize your data. 
 
 ## Installation
