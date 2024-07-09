@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "thonny-data_visualization"
+version = "0.0.1"
+authors = [
+  { name="Jean de Briey and Etienne Rubbers", email="jean.debriey@student.uclouvain.be and etienne.rubbers@student.uclouvain.be" },
+]
+description = "A data visualization plug-in for Thonny"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/etrubbers/thonny-data_visualization.git"
