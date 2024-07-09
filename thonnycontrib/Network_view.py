@@ -55,6 +55,44 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
         get_workbench().bind("BackendRestart", self._on_backend_restart, True)
 
 
+    def on_extendButton_click(self):
+        # Define the action for button 1
+        self.setReduc=0
+        for i in self.G.nodes:
+            self.G.nodes[i]['reduced']=0
+        DB.draw_graph(self)
+        self.selected_button_extReduc.set(1)
+        self.update_button_states()
+
+    def on_ReducButton_click(self):
+        # Define the action for button 2
+        self.setReduc=4
+        for node in self.G.nodes:
+            if len(self.G.nodes[node]['pointeur'])<1:
+                self.G.nodes[node]['reduced'] = 1
+            else:
+                change = False
+                etat = self.G.nodes[node]['pointeur'][0]['visible']
+                for i in self.G.nodes[node]['pointeur']:
+                    if i['visible'] != etat:
+                        change=True
+                        break
+                if change:
+                    self.G.nodes[node]['reduced'] = 2
+                elif etat==True:
+                    self.G.nodes[node]['reduced'] = 3
+                else:
+                    self.G.nodes[node]['reduced'] = 4
+        DB.draw_graph(self)
+        self.selected_button_extReduc.set(2)
+        self.update_button_states()
+        
+    def update_button_states(self):
+        # Update the relief of buttons based on selected_button_extReduc
+        buttonextend_relief = tk.SUNKEN if self.selected_button_extReduc.get() == 1 else tk.RAISED
+        buttonreduc_relief = tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED
+        self.extendButton.config(relief=buttonextend_relief)
+        self.ReducButton.config(relief=buttonreduc_relief)
 
     def _on_backend_restart(self, event=None):
         DB.clearAll(self)
@@ -289,7 +327,7 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
                         self.extendeRequestReduc=(parentID, pB)
                         self.send_request()
                         return
-                    elif not DB.isThereEdge(self,parentID, node_id, name):
+                    elif not DB.isThereEdge(self,parentID, node_id, pB):
                         DB.addEdge(self, parentID, node_id,name)
         DB.changeReducPointeur(self, parentID)
         DB.draw_graph(self)

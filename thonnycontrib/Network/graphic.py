@@ -4,9 +4,22 @@ import tkinter as tk
 
 def init_Graph(self):
     self.line_height = 0
-    # Create a Tkinter canvas to embed the graph
+    self.tailleTitleReduc=20
+    
+    self.selected_button_extReduc = tk.IntVar(value=1)
+    
+    self.toolbar = tk.Frame(self)
+    self.toolbar.grid(row=0, column=0, sticky="ew")
+    self.extendButton = tk.Button(self.toolbar, text="extended", command=self.on_extendButton_click)
+    self.extendButton.pack(side=tk.LEFT, padx=5, pady=5)
+    self.ReducButton = tk.Button(self.toolbar, text="reduced", command=self.on_ReducButton_click)
+    self.ReducButton.pack(side=tk.LEFT, padx=5, pady=5)
+    
+    self.extendButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 1 else tk.RAISED)
+    self.ReducButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED)
+    
     self.canvas_frame = tk.Frame(self)
-    self.canvas_frame.grid(row=0, column=0, sticky="nsew")
+    self.canvas_frame.grid(row=1, column=0, sticky="nsew")
     
     self.canvas = tk.Canvas(self.canvas_frame, bg='white')
     self.canvas.grid(row=0, column=0, sticky="nsew")
@@ -19,7 +32,8 @@ def init_Graph(self):
     self.canvas.config(xscrollcommand=self.scrollbar_x.set, yscrollcommand=self.scrollbar_y.set)
 
     # Configure the weight of rows and columns to make the canvas expandable
-    self.grid_rowconfigure(0, weight=1)
+    self.grid_rowconfigure(0, weight=0)  # Row 0 for toolbar
+    self.grid_rowconfigure(1, weight=1)  # Row 1 for canvas_frame
     self.grid_columnconfigure(0, weight=1)
     self.canvas_frame.grid_rowconfigure(0, weight=1)
     self.canvas_frame.grid_columnconfigure(0, weight=1)
@@ -27,8 +41,7 @@ def init_Graph(self):
     # Bind events
     self.canvas.bind("<ButtonPress-1>", self.on_node_click)
     self.canvas.bind("<B1-Motion>", self.on_node_drag)
-
-
+        
 def delete(self):
     self.canvas.delete("all")
 
@@ -36,7 +49,10 @@ def getTailleBox(self, node, X=None, Y=None):
     txt = None
     text_lines = self.G.nodes[node]['contenue'].split('\n')
     if self.G.nodes[node]['reduced']>0:
-        txt=text_lines[0]
+        if len(text_lines[0])>self.tailleTitleReduc:
+            txt = text_lines[0][:self.tailleTitleReduc] + " ..."
+        else:
+            txt=text_lines[0]
     else:
         txt=self.G.nodes[node]['contenue']
     text_id = self.canvas.create_text(0, 0, text=txt, fill='black', anchor='center')
@@ -83,7 +99,10 @@ def boite(self, node):
     txt = None
     if self.G.nodes[node]['reduced']>0:
         text_lines = self.G.nodes[node]['contenue'].split('\n')
-        txt=text_lines[0]
+        if len(text_lines[0])>self.tailleTitleReduc:
+            txt = text_lines[0][:self.tailleTitleReduc] + " ..."
+        else:
+            txt=text_lines[0]
     else:
         txt=self.G.nodes[node]['contenue']
     self.canvas.create_rectangle(self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][0], self.G.nodes[node]['pos'][1] + self.G.nodes[node]['taille'][1], self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][2], self.G.nodes[node]['pos'][1] + self.G.nodes[node]['taille'][3], fill=self.G.nodes[node]['couleur'], tags=node)
@@ -124,7 +143,7 @@ def CreeLineAndPointer(self,node):
                     DrawPointeur(self, node, pointeurNode, self.G.nodes[node]['pointeur'][pointeurNode]['visible'])
                                 
 def CreePointerReduced(self,node):
-    if self.G.nodes[node]['reduced']==1:
+    if len(self.G.nodes[node]['pointeur'])<1:
         return
     xLeft = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height-(self.line_height/2)+2
     xRigh = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height+(self.line_height/2)-2

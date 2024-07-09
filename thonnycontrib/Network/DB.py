@@ -3,7 +3,7 @@ from thonnycontrib.Network import graphic
 import networkx as nx
 
 def init_DB(self):
-    self.lol='Globals'
+    self.setReduc=0
     self.G = nx.DiGraph()
     graphic.init_Graph(self)
     
@@ -34,11 +34,11 @@ def removeEdge(self, edgeCreated):
 
 def addNode(self, idNode, text = ""):
     if idNode == "Globals":
-        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (100, 200), 'taille':(0,0,0,0),'visible':False,'reduced':0, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (100, 200), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     elif idNode == "Locals":
-        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':0, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     else:
-        self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':0, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
 
 def addNodeText(self, node, text):
     self.G.nodes[node]['contenue']+="\n"+text
@@ -168,7 +168,6 @@ def showIter(self, node1, node2, pB):
         self.G.nodes[node2]['visible']=True
         
         self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'], self.G.nodes[node2]['pos'] =  graphic.getTailleBox(self, node2, newX, newY)
-        self.lol=node2
         # Draw node
         graphic.boite(self, node2)
         
