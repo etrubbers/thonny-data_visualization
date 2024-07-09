@@ -4,8 +4,8 @@ from logging import getLogger
 from thonny import get_workbench, ui_utils
 from thonny.common import ValueInfo
 from thonny.languages import tr
-from thonnycontrib.representation_format import repr_format
-import thonnycontrib.sender as sender
+from representation_format import repr_format
+import sender as sender
 import builtins
 import time as t
 

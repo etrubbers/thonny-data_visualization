@@ -1,7 +1,7 @@
 # package marker
 from thonny import get_workbench
-from thonnycontrib.hierarchic_view import HierarchicView
-from thonnycontrib.Network_view import NetworkXView
+from hierarchic_view import HierarchicView
+from Network_view import NetworkXView
 
 '''Premet de charger les plug-ins au lancement de Thonny'''
 

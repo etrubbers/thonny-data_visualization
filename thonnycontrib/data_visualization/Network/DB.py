@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from thonnycontrib.Network import graphic
+from Network import graphic
 import networkx as nx
 
 def init_DB(self):
