@@ -1,5 +1,6 @@
 # package marker
 from thonny import get_workbench
+from thonny.languages import tr
 from hierarchic_view import HierarchicView
 from Network_view import NetworkXView
 
