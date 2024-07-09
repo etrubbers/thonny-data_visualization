@@ -6,3 +6,5 @@ dist
 .idea
 *.log
 venv
+*.egg-info/
+*.egg
