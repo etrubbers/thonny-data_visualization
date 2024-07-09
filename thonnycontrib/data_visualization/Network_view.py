@@ -6,9 +6,9 @@ from thonny.languages import tr
 import tkinter as tk
 import builtins
 import time as t
-from thonnycontrib.Network import DB
-from thonnycontrib.representation_format import repr_format
-import thonnycontrib.sender as sender
+from thonnycontrib.data_visualization.Network import DB
+from thonnycontrib.data_visualization.representation_format import repr_format
+import thonnycontrib.data_visualization.sender as sender
 
 builtin_types = [str(getattr(builtins, d)) for d in dir(builtins) if isinstance(getattr(builtins, d), type)]
 builtin_types.append("<class 'function'>")
@@ -378,5 +378,5 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
         DB.removeEdge(self, self.edgeCreated)
         self.edgeCreated=set()
 
-'''def load_plugin() -> None:
-    get_workbench().add_view(NetworkXView, tr("NetworkX view"), "s")'''
+def load_plugin() -> None:
+    get_workbench().add_view(NetworkXView, tr("NetworkX view"), "s")

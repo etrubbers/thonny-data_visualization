@@ -4,8 +4,8 @@ from logging import getLogger
 from thonny import get_workbench, ui_utils
 from thonny.common import ValueInfo
 from thonny.languages import tr
-from representation_format import repr_format
-import sender as sender
+from thonnycontrib.data_visualization.representation_format import repr_format
+import thonnycontrib.data_visualization.sender as sender
 import builtins
 import time as t
 
@@ -307,6 +307,6 @@ class HierarchicView(ui_utils.TreeFrame):
             self.var_to_request["lazy"][node_id] = ValueInfo(self.tree.set(node_id, "id"), "lazy")
             self.send_request()
 
-'''
+
 def load_plugin() -> None:
-    get_workbench().add_view(HierarchicView, tr("Hierarchic view"), "s")'''
+    get_workbench().add_view(HierarchicView, tr("Hierarchic view"), "s")
