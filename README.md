@@ -17,3 +17,4 @@ After this you should see Hierarchical data visualization and Network data visua
 
 * Visualize your data and its structure.
 * Debug your code seeing the connections between your data.
+* More details in the Usage_manual.md.
