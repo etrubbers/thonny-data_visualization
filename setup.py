@@ -21,7 +21,7 @@ setup(
         "Programming Language :: Python :: 3"
     ],
     keywords="Thonny, data visualization",
-    packages=['thonnycontrib.data_visualization', 'thonnycontrib.data_visualization.Network'],
+    packages=['thonnycontrib.data_visualization', 'thonnycontrib.data_visualization.Graphical'],
     python_requires=">=3.7",
     install_requires=["thonny>=3.2.1", "networkx"]
 )
