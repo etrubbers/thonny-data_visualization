@@ -10,13 +10,16 @@ def init_Graph(self):
     
     self.toolbar = tk.Frame(self)
     self.toolbar.grid(row=0, column=0, sticky="ew")
-    self.extendButton = tk.Button(self.toolbar, text="extended", command=self.on_extendButton_click)
-    self.extendButton.pack(side=tk.LEFT, padx=5, pady=5)
-    self.ReducButton = tk.Button(self.toolbar, text="reduced", command=self.on_ReducButton_click)
-    self.ReducButton.pack(side=tk.LEFT, padx=5, pady=5)
     
+    self.extendButton = tk.Button(self.toolbar, text="extend", command=self.on_extendButton_click)
+    self.extendButton.pack(side=tk.LEFT, padx=5, pady=5)
+    self.ReducButton = tk.Button(self.toolbar, text="reduce", command=self.on_ReducButton_click)
+    self.ReducButton.pack(side=tk.LEFT, padx=5, pady=5)
     self.extendButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 1 else tk.RAISED)
     self.ReducButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED)
+    
+    self.RecenteredButton = tk.Button(self.toolbar, text="recenter", command=self.on_RecenteredButton_click)
+    self.RecenteredButton.pack(side=tk.LEFT, padx=5, pady=5)
     
     self.canvas_frame = tk.Frame(self)
     self.canvas_frame.grid(row=1, column=0, sticky="nsew")

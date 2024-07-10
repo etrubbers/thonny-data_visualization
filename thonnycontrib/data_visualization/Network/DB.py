@@ -34,9 +34,9 @@ def removeEdge(self, edgeCreated):
 
 def addNode(self, idNode, text = ""):
     if idNode == "Globals":
-        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (100, 200), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (0, 0), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     elif idNode == "Locals":
-        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (0, 200), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     else:
         self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
 
@@ -137,6 +137,46 @@ def drawGraphIter(self, node):
                         else:
                             graphic.line(self, node1, node2, i)
                     break
+                
+def reCentrer(self):
+    # Clear canvas
+    graphic.delete(self)
+    for node in self.G.nodes():
+        self.G.nodes[node]['visible']=False
+    n=None
+    if self.G.has_node('Globals'):
+        n=reCentrerIter(self, 'Globals', 0, 0)
+    if self.G.has_node('Locals'):
+        Y=0
+        if n:
+            Y=self.G.nodes[n]['pos'][1] + self.G.nodes[n]['taille'][3]+5
+        reCentrerIter(self, 'Locals', 0, Y)
+    
+    graphic.scrollregion(self)
+
+def reCentrerIter(self, node, X, Y):
+    self.G.nodes[node]['visible']=True
+    self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'], self.G.nodes[node]['pos'] =  graphic.getTailleBox(self, node, X, Y)
+    graphic.boite(self, node)
+    boolIter=True
+    lastNode=None
+    for i in range(len(self.G.nodes[node]['pointeur'])):
+        if self.G.nodes[node]['pointeur'][i]['visible']:
+            for edge in self.G.edges():
+                node1, node2 = edge
+                if node1==node:
+                    if self.G.nodes[node1]['pointeur'][i]['name'] in self.G.edges[edge]['start']:
+                        if self.G.nodes[node2]['visible'] == False:
+                            newX = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][2]+20
+                            newY = findNewY(self, node)
+                            lastNode = reCentrerIter(self, node2, newX, newY)
+                            boolIter=False
+                        graphic.line(self, node1, node2, i)
+                        break
+    if boolIter:
+        return node
+    else:
+        return lastNode
 
 def moveNode(self, event, node, offset):
     if node is not None:

@@ -93,6 +93,9 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
         buttonreduc_relief = tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED
         self.extendButton.config(relief=buttonextend_relief)
         self.ReducButton.config(relief=buttonreduc_relief)
+        
+    def on_RecenteredButton_click(self):
+        DB.reCentrer(self)
 
     def _on_backend_restart(self, event=None):
         DB.clearAll(self)
