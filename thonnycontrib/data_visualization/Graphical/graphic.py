@@ -4,21 +4,21 @@ import tkinter as tk
 
 def init_Graph(self):
     self.line_height = 0
-    self.tailleTitleReduc=20
+    self.tailleTitleReduc=30
     
     self.selected_button_extReduc = tk.IntVar(value=1)
     
     self.toolbar = tk.Frame(self)
     self.toolbar.grid(row=0, column=0, sticky="ew")
     
-    self.extendButton = tk.Button(self.toolbar, text="extend", command=self.on_extendButton_click)
+    self.extendButton = tk.Button(self.toolbar, text="Extend", command=self.on_extendButton_click)
     self.extendButton.pack(side=tk.LEFT, padx=5, pady=5)
-    self.ReducButton = tk.Button(self.toolbar, text="reduce", command=self.on_ReducButton_click)
+    self.ReducButton = tk.Button(self.toolbar, text="Reduce", command=self.on_ReducButton_click)
     self.ReducButton.pack(side=tk.LEFT, padx=5, pady=5)
     self.extendButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 1 else tk.RAISED)
     self.ReducButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED)
     
-    self.RecenteredButton = tk.Button(self.toolbar, text="recenter", command=self.on_RecenteredButton_click)
+    self.RecenteredButton = tk.Button(self.toolbar, text="Recenter", command=self.on_RecenteredButton_click)
     self.RecenteredButton.pack(side=tk.LEFT, padx=5, pady=5)
     
     self.canvas_frame = tk.Frame(self)

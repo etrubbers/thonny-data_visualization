@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
-from thonny import get_workbench, ui_utils, get_runner
-from thonny.common import InlineCommand, ValueInfo
+from thonny import get_workbench, ui_utils
+from thonny.common import ValueInfo
 from thonny.languages import tr
 import tkinter as tk
 import builtins
-import time as t
-from thonnycontrib.data_visualization.Network import DB
+from thonnycontrib.data_visualization.Graphical import DB
 from thonnycontrib.data_visualization.representation_format import repr_format
 import thonnycontrib.data_visualization.sender as sender
 
@@ -20,15 +19,13 @@ builtin_data_struct = ["<class 'dict'>", "<class 'list'>", "<class 'set'>", "<cl
 
 logger = getLogger(__name__)
 
-class NetworkXView(tk.Frame, ui_utils.TreeFrame):
+class GraphicalView(tk.Frame, ui_utils.TreeFrame):
     def __init__(self, master=None):
         super().__init__(master)
         
         self.rect_padding = 5
 
         self.iter = 0
-
-        self.lazy_on = False
 
         self.name = 'GV'
 
@@ -41,7 +38,6 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
 
         self.tree_db = {}
         self.type_db = {}
-        self.repr_db = {}
         self.nodeCreated={}
         self.edgeCreated=set()
 
@@ -107,7 +103,6 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
         self.extendeRequestReduc=None
         self.tree_db = {}
         self.type_db = {}
-        self.repr_db = {}
         self.nodeCreated={}
         self.edgeCreated=set()
         self._last_progress_message = None
@@ -168,14 +163,13 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
         self.extendeRequestReduc=None
         self.tree_db = {}
         self.type_db = {}
-        self.repr_db = {}
         l = []
 
         globalst = None
         localst = None
         if (globals_):
             globalst = globals_.copy()
-        if (locals_):
+        if (locals_ and locals_ != globals_):
             localst = locals_.copy()
         self.var_to_request["globals"] = globalst
         self.var_to_request["locals"] = localst
@@ -268,9 +262,10 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
                 elif (tp in builtin_data_struct):
                     s = tp[8:-2] + " : " + s
                     
-                
+                if (len(s) > 100):
+                    s = s[:40] + " ... " + s[-40:]
+
                 self.tree_db[object_infos["id"]] = (s, object_infos)
-                self.repr_db[object_infos["repr"]] = s
                 DB.addPointeur(self, self.parent_id, name, object_infos['id'], self.nodeCreated[self.parent_id])
                 self.extend(s, name, object_infos)
                 
@@ -362,7 +357,7 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
                     for i in range(len(entries)):
                         entr = entries[i]
                         self.var_to_request["children"][node_id][str(i) + ".key"] = ValueInfo(entr[0].id, entr[0].repr)
-                        self.var_to_request["children"][node_id][str(i) + ".values"] = ValueInfo(entr[1].id, entr[1].repr)
+                        self.var_to_request["children"][node_id][str(i) + ".value"] = ValueInfo(entr[1].id, entr[1].repr)
                         if(i >= 100):
                             break
             else:
@@ -380,6 +375,3 @@ class NetworkXView(tk.Frame, ui_utils.TreeFrame):
         self.nodeCreated={}
         DB.removeEdge(self, self.edgeCreated)
         self.edgeCreated=set()
-
-def load_plugin() -> None:
-    get_workbench().add_view(NetworkXView, tr("NetworkX view"), "s")

@@ -73,6 +73,3 @@ class LocalVarView(VariablesFrame):
         else:
             groups = [("LOCALS", locals_), ("GLOBALS", globals_)]
         self.update_variables(groups)
-
-def load_plugin() -> None:
-    get_workbench().add_view(LocalVarView, tr("Globals and locals variables"), "ne", default_position_key="AAA")

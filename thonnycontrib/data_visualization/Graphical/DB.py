@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from thonnycontrib.data_visualization.Network import graphic
+from thonnycontrib.data_visualization.Graphical import graphic
 import networkx as nx
 
 def init_DB(self):
@@ -38,7 +38,7 @@ def addNode(self, idNode, text = ""):
     elif idNode == "Locals":
         self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (0, 200), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     else:
-        self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': (100, 50), 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': None, 'taille':(0,0,0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
 
 def addNodeText(self, node, text):
     self.G.nodes[node]['contenue']+="\n"+text
@@ -145,12 +145,12 @@ def reCentrer(self):
         self.G.nodes[node]['visible']=False
     n=None
     if self.G.has_node('Globals'):
-        n=reCentrerIter(self, 'Globals', 0, 0)
+        n=reCentrerIter(self, 'Globals', 20, 20)
     if self.G.has_node('Locals'):
         Y=0
         if n:
             Y=self.G.nodes[n]['pos'][1] + self.G.nodes[n]['taille'][3]+5
-        reCentrerIter(self, 'Locals', 0, Y)
+        reCentrerIter(self, 'Locals', 20, Y)
     
     graphic.scrollregion(self)
 
@@ -202,12 +202,13 @@ def showIter(self, node1, node2, pB):
     if self.G.nodes[node2]['visible']:
         graphic.line(self, node1, node2, pB)
     else:
-        newX = self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['taille'][2]+20
-        newY = findNewY(self, node1)
-
-        self.G.nodes[node2]['visible']=True
-        
-        self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'], self.G.nodes[node2]['pos'] =  graphic.getTailleBox(self, node2, newX, newY)
+        if self.G.nodes[node2]['pos']==None:
+            newX = self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['taille'][2]+20
+            newY = findNewY(self, node1)
+            self.G.nodes[node2]['visible']=True
+            self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'], self.G.nodes[node2]['pos'] =  graphic.getTailleBox(self, node2, newX, newY)
+        else:
+            self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'] = graphic.getTailleBox(self, node2)
         # Draw node
         graphic.boite(self, node2)
         

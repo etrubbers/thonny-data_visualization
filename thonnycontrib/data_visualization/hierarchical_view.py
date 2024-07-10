@@ -7,7 +7,6 @@ from thonny.languages import tr
 from thonnycontrib.data_visualization.representation_format import repr_format
 import thonnycontrib.data_visualization.sender as sender
 import builtins
-import time as t
 
 '''Enregistrement en mémoire des arrays décrivant les builtin types pour pouvoir les détecter et les traiter séparément'''
 builtin_types = [str(getattr(builtins, d)) for d in dir(builtins) if isinstance(getattr(builtins, d), type)]
@@ -20,7 +19,7 @@ builtin_data_struct = ["<class 'dict'>", "<class 'list'>", "<class 'set'>", "<cl
 
 logger = getLogger(__name__)
 
-class HierarchicView(ui_utils.TreeFrame):
+class HierarchicalView(ui_utils.TreeFrame):
 
     '''Création d'une structure ui_utils_TreeFrame permettant facilement une mise en forme de vue hiéréchique'''
     def __init__(self, master):
@@ -126,7 +125,7 @@ class HierarchicView(ui_utils.TreeFrame):
 
         if (globals_):
             globalst = globals_.copy()
-        if (locals_):
+        if (locals_ and locals_ != globals_):
             localst = locals_.copy()
 
         self.var_to_request["globals"] = globalst # Ajoute les variables globales dans la liste des variables à demander à la DB
@@ -218,8 +217,8 @@ class HierarchicView(ui_utils.TreeFrame):
                 self.tree_db[object_infos["id"]] = (s, name)
                 self.repr_db[object_infos["repr"]] = s + " (" + name + ")"
 
-            if (len(s) > 100):
-                s = s[:40] + " ... " + s[-40:]
+            if (len(s) > 200):
+                s = s[:75] + " ... " + s[-75:]
             
             self.tree.set(node_id, "value", s)
 
@@ -256,7 +255,7 @@ class HierarchicView(ui_utils.TreeFrame):
                     entr = entries[i]
                     self.var_to_request["children"][entr_id] = {}
                     self.var_to_request["children"][entr_id]["key"] = ValueInfo(entr[0].id, entr[0].repr)
-                    self.var_to_request["children"][entr_id]["values"] = ValueInfo(entr[1].id, entr[1].repr)
+                    self.var_to_request["children"][entr_id]["value"] = ValueInfo(entr[1].id, entr[1].repr)
                     if(i >= 100):
                         break
             else: # Pour les listes, tuples, ...
@@ -306,7 +305,3 @@ class HierarchicView(ui_utils.TreeFrame):
             self.var_to_request["lazy"] = {}
             self.var_to_request["lazy"][node_id] = ValueInfo(self.tree.set(node_id, "id"), "lazy")
             self.send_request()
-
-
-def load_plugin() -> None:
-    get_workbench().add_view(HierarchicView, tr("Hierarchic view"), "s")
