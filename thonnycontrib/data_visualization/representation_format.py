@@ -45,5 +45,7 @@ def little_format(st):
     if (" at " in s_ret): 
         at_bool = True
         s_ret = " ".join(s_ret.split()[:-2])
+    elif (" from " in s_ret):
+        s_ret = " ".join(s_ret.split()[:-2])
 
     return s_ret, at_bool

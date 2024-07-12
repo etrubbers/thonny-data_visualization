@@ -4,6 +4,7 @@ import networkx as nx
 
 def init_DB(self):
     self.setReduc=0
+    self.spaceBorderRecent=15
     self.G = nx.DiGraph()
     graphic.init_Graph(self)
     
@@ -35,54 +36,54 @@ def removeEdge(self, edgeCreated):
 
 def addNode(self, idNode, text = ""):
     if idNode == "Globals":
-        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (5, 5), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (self.spaceBorderRecent, self.spaceBorderRecent), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     elif idNode == "Locals":
-        #positionne le noeud "Locals" endessous du Graph déjà existant
-        newY=5
+        #Positionne le nœud "local" en dessous du graphe déjà existant
+        newY=self.spaceBorderRecent
         for n in self.G.nodes:
             if self.G.nodes[n]['pos'][1] + self.G.nodes[n]['taille'][1]+15>newY:
                 newY=self.G.nodes[n]['pos'][1] + self.G.nodes[n]['taille'][1]+15
-        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (5, newY), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (self.spaceBorderRecent, newY), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
     else:
         self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': None, 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
 
-#rajoute du texte à node
+#Rajoute du texte à "node"
 def addNodeText(self, node, text, newLigne=True):
     if newLigne:
         self.G.nodes[node]['contenue']+="\n"+text
     else:
         self.G.nodes[node]['contenue']+=text
 
-#retire à G tout les noeuds qui ne se trouve pas dans self.nodeCreated
+#Retire à "G" tous les nœuds qui ne se trouvent pas dans "self.nodeCreated"
 def removeNode(self, nodeCreated):
     nodes = dict(self.G.nodes())
     for i in nodes:
         if i not in nodeCreated:
             self.G.remove_node(i)
 
-#remet un node à zero, en gardant sa postion et juste en lui retirant ses pointeur et son text
+#Remets le nœud "node" à zéro, en gardant sa position et juste en lui retirant ses pointeurs et son texte
 def nodeReset(self, node):
         self.G.nodes[node]['contenue'] = self.G.nodes[node]['contenue'].split("\n")[0]
         self.G.nodes[node]['pointeur'] = []
 
-#rajoute un pointeur dans le graph
+#Rajoute un pointeur dans le graphe
 def addPointeur(self,nodeParent, namePointeur, idPointeur, createdFromParent):
     if namePointeur in createdFromParent:
         self.G.nodes[nodeParent]['pointeur'].append({'name':namePointeur,'id':idPointeur,'visible':createdFromParent[namePointeur],'pSize':(0,0,0,0)})
     else:
         self.G.nodes[nodeParent]['pointeur'].append({'name':namePointeur,'id':idPointeur,'visible':False,'pSize':(0,0,0,0)})
 
-#change le pointeur pB de node à ouvert ou fermer
+#Change le pointeur "pB" de node à l’état ouvert ou fermé
 def changePointeur(self, node, pB):
     self.G.nodes[node]['pointeur'][pB]['visible'] = not self.G.nodes[node]['pointeur'][pB]['visible']
 
-#utilisé quand le noeud est réduit
-#fixe la valeur de self.G.nodes[node]['reduced'] en fonction des pointeur de node et de leur état
-#change la taille de la boite node et la taille de reduc (le carré blanc avec + et -)
+#Est utilisé quand le nœud "node" est réduit
+#Fixe la valeur de "self.G.nodes[node]['reduced']" en fonction des pointeurs de node et de leur état
+#Change la taille de la boîte node et la taille de "reduc" (le carré blanc avec + et -)
 def changeReduc(self, node):
     if self.G.nodes[node]['reduced'] == 0:
         if len(self.G.nodes[node]['pointeur'])<1:
-            self.G.nodes[node]['reduced'] = 1 #The node is reduced and doesn't have pointeur
+            self.G.nodes[node]['reduced'] = 1 #Le nœud est réduit et n'a pas de pointeur
         else:
             change = False
             etat = self.G.nodes[node]['pointeur'][0]['visible']
@@ -91,18 +92,18 @@ def changeReduc(self, node):
                     change=True
                     break
             if change:
-                self.G.nodes[node]['reduced'] = 2 #The node is reduced whit open and close pointeurs
+                self.G.nodes[node]['reduced'] = 2 #Le nœud est réduit avec des pointeurs à l’état ouvert et fermé
             elif etat==True:
-                self.G.nodes[node]['reduced'] = 3 #The node is reduced whit only open pointeur
+                self.G.nodes[node]['reduced'] = 3 #Le nœud est réduit avec seulement des pointeurs à l’état ouvert
             else:
-                self.G.nodes[node]['reduced'] = 4 #The node is reduced whit only close pointeur
+                self.G.nodes[node]['reduced'] = 4 #Le nœud est réduit avec seulement des pointeurs fermés
     else:
-        self.G.nodes[node]['reduced'] = 0 #The node is not reduced
+        self.G.nodes[node]['reduced'] = 0 #Le nœud n'est pas réduit
     self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'] = graphic.getTailleBox(self, node)
 
-#utilisé quand cliquer sur la boule pointeur verte, orange ou rouge quand le noeud est sous forme reduite et qu'il a des pointeur
-#changer self.G.nodes[node]['reduced'] voir changeReduc pour savoir à quoi correspond les valeur possible
-#ferme ou ouvre en même temps tout les pointeur de node
+#Est utilisé quand l'utilisateur clique sur la boule pointeur verte, orange ou rouge quand le nœud est sous forme réduite et qu'il a des pointeurs
+#Change "self.G.nodes[node]['reduced']" (aller voir "changeReduc" pour savoir à quoi correspondent les valeurs possibles)
+#Ferme ou ouvre en même temps tous les pointeurs de "node"
 def changeReducPointeur(self, node):
     if self.G.nodes[node]['reduced']==2 or self.G.nodes[node]['reduced']==4 :
         self.G.nodes[node]['reduced'] = 3
@@ -113,9 +114,8 @@ def changeReducPointeur(self, node):
         for pB in range(len(self.G.nodes[node]['pointeur'])):
             self.G.nodes[node]['pointeur'][pB]['visible']=False
 
-#afficher tout le graph avec tout modification qui aurais été fait avant
+#Affiche tout le graphe avec toute modification qui aurait été faite avant
 def draw_graph(self):
-    # Clear canvas
     graphic.delete(self)
     for node in self.G.nodes():
         self.G.nodes[node]['visible']=False
@@ -126,44 +126,44 @@ def draw_graph(self):
     
     graphic.scrollregion(self)
 
-# suite/iteration de draw_graph
+#Suite/iteration de "draw_graph"
 def drawGraphIter(self, node):
     self.G.nodes[node]['visible']=True
 
-    #trouver/verifier la taille et la position de reduc de la boite du node
+    #Trouve/vérifie la taille et la position de "reduc" de la boîte du nœud "node"
     self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'] = graphic.getTailleBox(self, node)
-    #dessiner node
+    #dessine "node"
     graphic.boite(self, node)
-    for i in range(len(self.G.nodes[node]['pointeur'])):#parcourir tout les pointeur pour trouver des noeud enfant à afficher
+    for i in range(len(self.G.nodes[node]['pointeur'])):#Parcours tous les pointeurs pour trouver des nœuds enfant à afficher
         if self.G.nodes[node]['pointeur'][i]['visible']:
             for edge in self.G.out_edges(node):
                 if self.G.nodes[node]['pointeur'][i]['name'] in self.G.edges[edge]['start']:
-                    if self.G.nodes[edge[1]]['visible'] == False:#si le noeud enfant n'est pas encore afficher: iteration
+                    if self.G.nodes[edge[1]]['visible'] == False:#Itère si le nœud enfant n'est pas encore affiché
                         drawGraphIter(self, edge[1])
-                    graphic.line(self, node, edge[1], i)#afficher edge du noeud parent vers le noeud enfant
+                    graphic.line(self, node, edge[1], i)#Affiche l'arête du nœud parent vers le nœud enfant
                     break
 
-#appelle pour tout recentrer
+#Est appelé pour tout recentrer
 def reCentrer(self):
-    # retiré tout ce qui est affiché et otu mettre à visible=False
+    #Retire tout ce qui est affiché et mets tout à visible = False
     graphic.delete(self)
     for node in self.G.nodes():
         self.G.nodes[node]['visible']=False
     
-    lowestY=None #n=la cordonner la plus basse du graph sans Locals et ses enfant
+    lowestY=None #lowestY = la coordonnée la plus basse du graphe sans le nœud "Locals" et ses enfants
     if self.G.has_node('Globals'):
-        lowestY=5
-        lowestY=reCentrerIter(self, 'Globals', 5, 5, lowestY)
+        lowestY=self.spaceBorderRecent
+        lowestY=reCentrerIter(self, 'Globals', self.spaceBorderRecent, self.spaceBorderRecent, lowestY)
     
     if self.G.has_node('Locals'):
-        Y=5
+        Y=self.spaceBorderRecent
         if lowestY:
             Y=lowestY+15
-        reCentrerIter(self, 'Locals', 5, Y, lowestY)
+        reCentrerIter(self, 'Locals', self.spaceBorderRecent, Y, lowestY)
     
     graphic.scrollregion(self)
 
-# suite/iteration de reCentrer
+#Suite/iteration de "reCentrer"
 def reCentrerIter(self, node, X, Y, lowestY):
     self.G.nodes[node]['visible']=True
     self.G.nodes[node]['pos'] = (X, Y)
@@ -172,22 +172,22 @@ def reCentrerIter(self, node, X, Y, lowestY):
     if self.G.nodes[node]['pos'][1]+self.G.nodes[node]['taille'][1]>lowestY:
         lowestY=self.G.nodes[node]['pos'][1]+self.G.nodes[node]['taille'][1]
     
-    for i in range(len(self.G.nodes[node]['pointeur'])):# trouver tout le noeud enfant qui doivent être affiché
+    for i in range(len(self.G.nodes[node]['pointeur'])):#Trouve tous les nœuds enfant qui doivent être affichés
         if self.G.nodes[node]['pointeur'][i]['visible']:
             for edge in self.G.out_edges(node):
                 if self.G.nodes[node]['pointeur'][i]['name'] in self.G.edges[edge]['start']:
                     if self.G.nodes[edge[1]]['visible'] == False:
-                        # calculé la nouvelle position du noeud enfant à affiché trouver et iteration dessus
+                        #Calcule la nouvelle position du nœud enfant trouvé à afficher et itère dessus
                         newX = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][0]+15
                         newY = findNewY(self, node)
                         lowestY = reCentrerIter(self, edge[1], newX, newY, lowestY)
-                    #afficher l'edge du noeud parent vers le noeud enfant
+                    #Afficher l’arête du nœud parent vers le nœud enfant
                     graphic.line(self, node, edge[1], i)
                     break
     
     return lowestY
 
-# quand un noeud est bouger, changer sa position et dessiner tout le graph en conséquance #TODO à optimiser pas besoin de redessiner TOUT le graph
+#Change la position d’un nœud quand il est bougé et dessine tout le graphe en conséquence
 def moveNode(self, event, node, offset):
     if node is not None:
         new_x = graphic.getX(self, event.x) - offset[0]
@@ -196,46 +196,46 @@ def moveNode(self, event, node, offset):
         self.G.nodes[node]['pos'] = (new_x, new_y)
         draw_graph(self)
 
-# est appellé quand un nouveau noeud est créer et dois être affiché, il viens du pointeur "pB" du noeud "node"
-# Va afficher l'edge du noeud parent "node" vers le nouveau noeud, le nouveau noeud et tout les noeud/edge suivant qui devrai être visible
+#Est appelé quand un nouveau nœud est créé et doit être affiché, il vient du pointeur "pB" du nœud "node"
+#Affiche l’arête du nœud parent "node" vers le nouveau nœud, le nouveau nœud et tous les nœuds/arêtes suivants qui devraient être visibles
 def showNodeEdge(self, node, pB, FromExtend = True):
     self.G.nodes[node]['pointeur'][pB]['visible'] = not self.G.nodes[node]['pointeur'][pB]['visible']
     if FromExtend:
-        graphic.DrawPointeur(self, node, pB)#si appellé de l'ouverture d'un pointeur d'un noeud qu iest étandu, alors changer sa couleur
+        graphic.DrawPointeur(self, node, pB)#Change la couleur du pointeur "pB" si cette fonction est appelée de l'ouverture d'un pointeur d'un nœud qui est étandu
     for edge in self.G.out_edges(node):
         if self.G.nodes[node]['pointeur'][pB]['name'] in self.G.edges[edge]['start']:
             showIter(self, node, edge[1], pB)
 
     graphic.scrollregion(self)
 
-# suite/iteration de showNodeEdge
+#Suite/iteration de "showNodeEdge"
 def showIter(self, node1, node2, pB):
-    if self.G.nodes[node2]['visible']: #si le noeud est déjà afficher, afficher l'edge et s'arrêter là
+    if self.G.nodes[node2]['visible']: #Affiche l’arête si le nœud est déjà affiché et s’arrête là
         graphic.line(self, node1, node2, pB)
         return
     else:
-        if self.G.nodes[node2]['pos']==None: #si le noeud n'a pas encore de position, lui en trouver une
+        if self.G.nodes[node2]['pos']==None: #Trouve une position au nœud s'il n'en a pas encore
             newX = self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['taille'][0]+15
             newY = findNewY(self, node1)
             self.G.nodes[node2]['pos'] = (newX, newY)
         
         self.G.nodes[node2]['visible']=True
         
-        #enregistrer la taille et la position du bouton extend/reduc du nouveau noeud #TODO a optimisé pas sûr de l'utilite de revérifié à chaque fois la taille+reduc
+        #Enregistre la taille et la position du bouton "extend/reduc" du nouveau nœud
         self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'] = graphic.getTailleBox(self, node2)
-        # dessiné le nouveau noeud + l'edge du noeud parent vers le nouveau
+        # Dessine le nouveau nœud et l’arête du nœud parent vers le nouveau nœud
         graphic.boite(self, node2)
         graphic.line(self, node1, node2, pB)
         
-        for i in range(len(self.G.nodes[node2]['pointeur'])):# pour tout les pointeurs ouvert du nouveau noeud, cherché le noeud suivant et depth first search
+        for i in range(len(self.G.nodes[node2]['pointeur'])):#Cherche le nœud suivant parmi tous les pointeurs ouverts du nouveau nœud et lance le depth first search
             if self.G.nodes[node2]['pointeur'][i]['visible']:
                 for edge in self.G.out_edges(node2):
                     if self.G.nodes[node2]['pointeur'][i]['name'] in self.G.edges[edge]['start']:
                         showIter(self, node2, edge[1], i)
                         break
 
-# utiliser quand il faut recentrer ou que un noeud n'a pas encore de position, permet de trouvé le YDown+15 le plus en bas parmis tout les noeud enfant visible de "node"
-# retour un Y = YUp de node si node n'a pas de noeud enfant affiché
+#Est utilisé quand il faut recentrer ou qu'un nœud n'a pas encore de position, permet de trouver le "YDown+15" le plus bas parmi tous les nœuds enfant visibles de "node"
+#Retourne un Y = YUp du nœud node si node n'a pas de nœud enfant affiché
 def findNewY(self,node):
     maxY= self.G.nodes[node]['pos'][1]
     for i in range(len(self.G.nodes[node]['pointeur'])):
