@@ -9,7 +9,8 @@ visualize your data.
 2. Select "Tools => Manage plug-ins"...
 3. Enter ``thonny-data_visualization`` to search box and press ENTER
 4. Install the plug-in
-5. Restart Thonny
+5. Be sure that you are up to date (upgrade the plug-in at the same place)
+6. Restart Thonny
 
 After this you should see Hierarchical data visualization and Network data visualization in the View menu.
 
