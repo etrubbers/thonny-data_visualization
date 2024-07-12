@@ -23,6 +23,13 @@ def send(self):
     else:
         parent = next(iter(self.var_to_request["children"]))
         var = next(iter(self.var_to_request["children"][parent]))
+        if (var == "..."):
+            self.add_next(parent, var)
+            del self.var_to_request["children"][parent][var]
+            if (len(self.var_to_request["children"][parent]) == 0):
+                del self.var_to_request["children"][parent]
+            self.send_request()
+            return
         object_id = self.var_to_request["children"][parent][var].id
         self.parent_id = parent
         del self.var_to_request["children"][parent][var]

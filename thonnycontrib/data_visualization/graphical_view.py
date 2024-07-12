@@ -29,6 +29,8 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
 
         self.name = 'GV'
 
+        self.selected_node = None
+        self.offset = None
         self.parent_id = None
         self.object_id = None
         self.object_name = None
@@ -37,6 +39,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.extendeRequestReduc=None
 
         self.tree_db = {}
+        self.repr_db = {}
         self.type_db = {}
         self.nodeCreated={}
         self.edgeCreated=set()
@@ -102,6 +105,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.extendeRequest = None
         self.extendeRequestReduc=None
         self.tree_db = {}
+        self.repr_db = {}
         self.type_db = {}
         self.nodeCreated={}
         self.edgeCreated=set()
@@ -162,7 +166,8 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.extendeRequest = None
         self.extendeRequestReduc=None
         self.tree_db = {}
-        self.type_db = {}
+        self.repr_db = {}
+        #self.type_db = {}
         l = []
 
         globalst = None
@@ -212,7 +217,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                 self.object_name = None
                 self.extendeRequest = None
                 self.extendeRequestReduc=None
-                DB.draw_graph(self)
+                # DB.draw_graph(self) #TODO
                 
             else:
                 object_infos = msg.info
@@ -241,6 +246,8 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
             self.nodeCreated[self.parent_id]={}
         elif ((self.parent_id == "Globals" and DB.isThereNode(self, "Globals") and  'Globals' not in self.nodeCreated) or (self.parent_id == "Locals" and DB.isThereNode(self, "Locals") and  'Locals' not in self.nodeCreated)):
             self.reset(self.parent_id)
+        elif (DB.isThereNode(self, self.parent_id) and self.parent_id not in self.nodeCreated) :
+            self.reset(self.parent_id)
         
         name = str(object_infos["name"])
         DB.addNodeText(self, self.parent_id, name)
@@ -255,9 +262,14 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
 
                 if at_bool:
                     if (tp not in self.type_db.keys()):
-                        self.type_db[tp] = 0
-                    self.type_db[tp] += 1
-                    s += " n°" + str(self.type_db[tp])
+                        self.type_db[tp] = {}
+                        self.type_db[tp]["len"] = 1
+                        self.type_db[tp][object_infos["id"]] = 1
+                    else:
+                        if (object_infos["id"] not in self.type_db[tp].keys()):
+                            self.type_db[tp]["len"] += 1
+                            self.type_db[tp][object_infos["id"]] = self.type_db[tp]["len"]
+                    s += " n°" + str(self.type_db[tp][object_infos["id"]])
                     
                 elif (tp in builtin_data_struct):
                     s = tp[8:-2] + " : " + s
@@ -266,6 +278,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                     s = s[:40] + " ... " + s[-40:]
 
                 self.tree_db[object_infos["id"]] = (s, object_infos)
+                self.repr_db[object_infos["repr"]] = s
                 DB.addPointeur(self, self.parent_id, name, object_infos['id'], self.nodeCreated[self.parent_id])
                 self.extend(s, name, object_infos)
                 
@@ -277,12 +290,11 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                     
                 
         else :
-            DB.addNodeText2(self, self.parent_id, " : " + s)
+            DB.addNodeText(self, self.parent_id, " : " + s, False)
 
     def extend(self, s, name, object_infos):
         node_id = object_infos["id"]
         if DB.isThereNode(self, node_id):
-            self.reset(self.parent_id)
             self.extendSuite(object_infos, self.parent_id, name)
                         
     def extendLazy(self, s, name, object_infos, parentID,pB):
@@ -327,6 +339,8 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                         return
                     elif not DB.isThereEdge(self,parentID, node_id, pB):
                         DB.addEdge(self, parentID, node_id,name)
+                        if (parentID, node_id,name) not in self.edgeCreated:
+                            self.edgeCreated.add((parentID, node_id,name))
         DB.changeReducPointeur(self, parentID)
         DB.draw_graph(self)
         
@@ -343,11 +357,14 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                 self.var_to_request["children"][node_id] = {}
                 i = 0
                 for attr in attributes:
+                    if(i > 100):
+                        self.var_to_request["children"][node_id]["..."] = None
+                        break
                     if ('<built-in method' not in attributes[attr].repr):
                         self.var_to_request["children"][node_id][attr] = ValueInfo(attributes[attr].id, attributes[attr].repr)
-                    if(i >= 100):
-                        break
-                    i+=1
+                        i+=1
+            else:
+                self.nodeCreated[node_id] = {}
         
         elif (tp in builtin_data_struct):
             if (tp == "<class 'dict'>"):
@@ -359,6 +376,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                         self.var_to_request["children"][node_id][str(i) + ".key"] = ValueInfo(entr[0].id, entr[0].repr)
                         self.var_to_request["children"][node_id][str(i) + ".value"] = ValueInfo(entr[1].id, entr[1].repr)
                         if(i >= 100):
+                            self.var_to_request["children"][node_id]["..."] = None
                             break
             else:
                 elements = object_infos['elements']
@@ -368,7 +386,11 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                         elem = elements[i]
                         self.var_to_request["children"][node_id][i] = ValueInfo(elem.id, elem.repr)
                         if(i >= 100):
+                            self.var_to_request["children"][node_id]["..."] = None
                             break
+
+    def add_next(self, parent, var):
+        self.G.nodes[parent]['contenue'] += "\n" + var
 
     def clear_some(self):
         DB.removeNode(self, self.nodeCreated)

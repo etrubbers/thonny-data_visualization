@@ -211,7 +211,7 @@ class HierarchicalView(ui_utils.TreeFrame):
                     s += " n°" + str(self.type_db[tp]) # Cette attribution simplifiée attribue un numéro correspondant au nombre d'objet de ce type déjà rencontré
 
                 name = object_infos["name"] # Le nom de l'objet désigné par l'utilisateur
-                if (self.tree.set(self.parent_id, "id") != "Globals" and self.tree.set(self.parent_id, "id") != "Locals"): # Si c'est un enfant, on l'utilise en référence à son objet parent
+                if (self.tree.set(self.parent_id, "id") != "Globals" and self.tree.set(self.parent_id, "id") != "Locals"): # Si som'est un enfant, on l'utilise en référence à son objet parent
                     name = self.tree_db[self.tree.set(self.parent_id, "id")][1] + "." + str(name)
                 
                 self.tree_db[object_infos["id"]] = (s, name)
@@ -241,11 +241,12 @@ class HierarchicalView(ui_utils.TreeFrame):
                 self.var_to_request["children"][node_id] = {}
                 i = 0
                 for attr in attributes:
+                    if(i > 100):
+                        self.var_to_request["children"][node_id]["..."] = None
+                        break
                     if ('<built-in method' not in attributes[attr].repr): # Choix d'implémentation : on n'affiche pas les méthodes builtin
                         self.var_to_request["children"][node_id][attr] = ValueInfo(attributes[attr].id, attributes[attr].repr)
-                    if(i >= 100):
-                        break
-                    i+=1
+                        i+=1
         
         elif (tp in builtin_data_struct): # Si l'objet est une structure de donnée builtin intéressante
             if (tp == "<class 'dict'>"):
@@ -257,6 +258,7 @@ class HierarchicalView(ui_utils.TreeFrame):
                     self.var_to_request["children"][entr_id]["key"] = ValueInfo(entr[0].id, entr[0].repr)
                     self.var_to_request["children"][entr_id]["value"] = ValueInfo(entr[1].id, entr[1].repr)
                     if(i >= 100):
+                        self.var_to_request["children"][node_id]["..."] = None
                         break
             else: # Pour les listes, tuples, ...
                 elements = object_infos['elements']
@@ -266,6 +268,7 @@ class HierarchicalView(ui_utils.TreeFrame):
                         elem = elements[i]
                         self.var_to_request["children"][node_id][i] = ValueInfo(elem.id, elem.repr)
                         if(i >= 100):
+                            self.var_to_request["children"][node_id]["..."] = None
                             break
     
     '''Permet d'étendre de façon lazy les noeuds de l'arbre correspondant à la vue hiérarchhique'''
@@ -280,7 +283,10 @@ class HierarchicalView(ui_utils.TreeFrame):
             self.var_to_request["lazy"] = {}
             self.var_to_request["lazy"][node_id] = ValueInfo(self.tree.set(node_id, "id"), "lazy") # On va récupérer dans l'arbre l'ID de l'objet correspondant au noeud à développer
             self.send_request()
-        
+    
+    def add_next(self, parent, var):
+        self.tree.insert(parent, "end", text=var, open=False)
+
     '''Permet de nettoyer complètement l'arbre'''
     def _clear_tree(self):
         for child_id in self.tree.get_children():
