@@ -12,7 +12,7 @@ visualize your data.
 5. Be sure that you are up to date (upgrade the plug-in at the same place)
 6. Restart Thonny
 
-After this you should see Hierarchical data visualization and Network data visualization in the View menu.
+After this you should see Hierarchical data view and Graphical data view in the View menu.
 
 ## Usage
 
