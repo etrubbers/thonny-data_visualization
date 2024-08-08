@@ -12,7 +12,15 @@ def clearAll(self):
     self.G.clear()
     graphic.delete(self)
     graphic.scrollregion(self)
-    
+
+#Permet de scroller avec la roulette de la souris quand la souris est relâchée.
+def on_mouse_wheel(self, event):
+    graphic.on_mouse_wheel(self, event)
+
+#Permet de scroller avec la roulette de la souris quand la souris est enfoncée.
+def on_shift_mouse_wheel(self, event):
+    graphic.on_shift_mouse_wheel(self, event)
+
 def addEdge(self, startNode, endNode, startPointer):
     if isThereNode(self, startNode) and isThereNode(self, endNode):
         if self.G.has_edge(startNode, endNode):
@@ -36,16 +44,16 @@ def removeEdge(self, edgeCreated):
 
 def addNode(self, idNode, text = ""):
     if idNode == "Globals":
-        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (self.spaceBorderRecent, self.spaceBorderRecent), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Globals', {'contenue': f'Globals', 'type': 'TypeA', 'couleur': 'deep sky blue', 'pos': (self.spaceBorderRecent, self.spaceBorderRecent), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'tailleTitre':(0,0), 'pointeur': []})])
     elif idNode == "Locals":
         #Positionne le nœud "local" en dessous du graphe déjà existant
         newY=self.spaceBorderRecent
         for n in self.G.nodes:
             if self.G.nodes[n]['pos'][1] + self.G.nodes[n]['taille'][1]+15>newY:
                 newY=self.G.nodes[n]['pos'][1] + self.G.nodes[n]['taille'][1]+15
-        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (self.spaceBorderRecent, newY), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([('Locals', {'contenue': f'Locals', 'type': 'TypeB', 'couleur': 'lime green', 'pos': (self.spaceBorderRecent, newY), 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'tailleTitre':(0,0), 'pointeur': []})])
     else:
-        self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': None, 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'pointeur': []})])
+        self.G.add_nodes_from([(idNode,{'contenue': text, 'type': 'TypeC', 'couleur': 'turquoise', 'pos': None, 'taille':(0,0),'visible':False,'reduced':self.setReduc, 'reduc':(0,0), 'tailleTitre':(0,0), 'pointeur': []})])
 
 #Rajoute du texte à "node"
 def addNodeText(self, node, text, newLigne=True):
@@ -99,7 +107,7 @@ def changeReduc(self, node):
                 self.G.nodes[node]['reduced'] = 4 #Le nœud est réduit avec seulement des pointeurs fermés
     else:
         self.G.nodes[node]['reduced'] = 0 #Le nœud n'est pas réduit
-    self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'] = graphic.getTailleBox(self, node)
+    self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'], self.G.nodes[node]['tailleTitre'] = graphic.getTailleBox(self, node)
 
 #Est utilisé quand l'utilisateur clique sur la boule pointeur verte, orange ou rouge quand le nœud est sous forme réduite et qu'il a des pointeurs
 #Change "self.G.nodes[node]['reduced']" (aller voir "changeReduc" pour savoir à quoi correspondent les valeurs possibles)
@@ -113,6 +121,10 @@ def changeReducPointeur(self, node):
         self.G.nodes[node]['reduced'] = 4
         for pB in range(len(self.G.nodes[node]['pointeur'])):
             self.G.nodes[node]['pointeur'][pB]['visible']=False
+            
+def changeReducPointOrange(self, node):
+    self.G.nodes[node]['reduced']=2
+    graphic.changeReducPointOrange(self, node)
 
 #Affiche tout le graphe avec toute modification qui aurait été faite avant
 def draw_graph(self):
@@ -131,7 +143,7 @@ def drawGraphIter(self, node):
     self.G.nodes[node]['visible']=True
 
     #Trouve/vérifie la taille et la position de "reduc" de la boîte du nœud "node"
-    self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'] = graphic.getTailleBox(self, node)
+    self.G.nodes[node]['taille'], self.G.nodes[node]['reduc'], self.G.nodes[node]['tailleTitre'] = graphic.getTailleBox(self, node)
     #dessine "node"
     graphic.boite(self, node)
     for i in range(len(self.G.nodes[node]['pointeur'])):#Parcours tous les pointeurs pour trouver des nœuds enfant à afficher
@@ -167,6 +179,7 @@ def reCentrer(self):
 def reCentrerIter(self, node, X, Y, lowestY):
     self.G.nodes[node]['visible']=True
     self.G.nodes[node]['pos'] = (X, Y)
+    find_non_overlapping_position(self, node)
     graphic.boite(self, node)
     
     if self.G.nodes[node]['pos'][1]+self.G.nodes[node]['taille'][1]>lowestY:
@@ -179,7 +192,7 @@ def reCentrerIter(self, node, X, Y, lowestY):
                     if self.G.nodes[edge[1]]['visible'] == False:
                         #Calcule la nouvelle position du nœud enfant trouvé à afficher et itère dessus
                         newX = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][0]+15
-                        newY = findNewY(self, node)
+                        newY = self.G.nodes[node]['pos'][1]
                         lowestY = reCentrerIter(self, edge[1], newX, newY, lowestY)
                     #Afficher l’arête du nœud parent vers le nœud enfant
                     graphic.line(self, node, edge[1], i)
@@ -216,13 +229,16 @@ def showIter(self, node1, node2, pB):
     else:
         if self.G.nodes[node2]['pos']==None: #Trouve une position au nœud s'il n'en a pas encore
             newX = self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['taille'][0]+15
-            newY = findNewY(self, node1)
+            newY = self.G.nodes[node1]['pos'][1]
             self.G.nodes[node2]['pos'] = (newX, newY)
-        
+            self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'], self.G.nodes[node2]['tailleTitre'] = graphic.getTailleBox(self, node2)
+            find_non_overlapping_position(self, node2)
+        else:
+            self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'], self.G.nodes[node2]['tailleTitre'] = graphic.getTailleBox(self, node2)
         self.G.nodes[node2]['visible']=True
         
         #Enregistre la taille et la position du bouton "extend/reduc" du nouveau nœud
-        self.G.nodes[node2]['taille'], self.G.nodes[node2]['reduc'] = graphic.getTailleBox(self, node2)
+        
         # Dessine le nouveau nœud et l’arête du nœud parent vers le nouveau nœud
         graphic.boite(self, node2)
         graphic.line(self, node1, node2, pB)
@@ -247,6 +263,46 @@ def findNewY(self,node):
                             maxY=self.G.nodes[edge[1]]['pos'][1] + self.G.nodes[edge[1]]['taille'][1]+15
                     break
     return maxY
+
+def rectangles_overlap(self, rect, newNode):
+    """
+    Vérifie si deux rectangles se chevauchent.
+    Chaque rectangle est défini par (XGauche, YTop, XRight, YDown).
+    """
+    if self.G.nodes[rect]['pos'][0]+self.G.nodes[rect]['taille'][0]+self.padding <= self.G.nodes[newNode]['pos'][0] or self.G.nodes[newNode]['pos'][0]+self.G.nodes[newNode]['taille'][0]+self.padding <= self.G.nodes[rect]['pos'][0] or self.G.nodes[rect]['pos'][1]+self.G.nodes[rect]['taille'][1]+self.padding <= self.G.nodes[newNode]['pos'][1]:
+        return 0
+    if self.G.nodes[newNode]['pos'][1]+self.G.nodes[newNode]['taille'][1]+self.padding <= self.G.nodes[rect]['pos'][1]:
+        return 1
+    return 2
+
+def find_non_overlapping_position(self, new_rect):
+    """
+    Trouve la première position libre en dessous de la position initiale où le nouveau rectangle
+    ne chevauche aucun rectangle existant.
+    """
+    li = list(self.G.nodes())
+    li.remove(new_rect)
+    li2=[]
+    isOverlap=False
+    while(True):
+        isOverlap=False
+        for node in li:
+            if self.G.nodes[node]['visible']==False:
+                continue
+            if self.G.nodes[node]['pos']==None:
+                continue
+            overLap = rectangles_overlap(self, node, new_rect)
+            if overLap==1:
+                li2.append(node)
+            elif overLap==2:
+                self.G.nodes[new_rect]['pos']= (self.G.nodes[new_rect]['pos'][0], self.G.nodes[node]['pos'][1]+self.G.nodes[node]['taille'][1]+self.padding)
+                li2=li2+li[li.index(node) + 1:]
+                isOverlap=True
+                break
+        if isOverlap==False:
+            return self.G.nodes[new_rect]['pos'][1]+self.G.nodes[new_rect]['taille'][1]
+        li=li2
+        li2=[]
     
     
 
@@ -274,6 +330,15 @@ def isCliqueOnReducPointeur(self, x, y, node):
     if self.G.nodes[node]['reduced']<2:
         return False
     return self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding <= graphic.getX(self, x) <= self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding+self.line_height and self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]-self.line_height/2 <= graphic.getY(self, y) <= self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]+self.line_height/2
+
+def isCliqueOnSeeMore(self, event, node):
+    # Exemple de chaîne de caractères
+    parts = self.G.nodes[node]['contenue'].rsplit('\n', 1)
+    if len(parts)>1:
+        if parts[1]==self.sentenceSeeMore100:
+            if graphic.getY(self, event.y)>self.G.nodes[node]['pos'][1]+self.G.nodes[node]['taille'][1]-(self.line_height+self.padding):
+                return True
+    return False
 
 # True si le pointeur "pB" du noeud "node" est cliqué/ouvert, en vert
 def isPointeurOpen(self, node, pB):

@@ -1,10 +1,12 @@
 from logging import getLogger
 from tkinter import ttk
+from thonny.common import ValueInfo
 
 from thonny import get_runner, get_workbench
 from thonny.common import InlineCommand
 from thonny.languages import tr
 from thonny.memory import VariablesFrame
+from thonnycontrib.data_visualization.representation_format import repr_format
 
 
 logger = getLogger(__name__)
@@ -14,6 +16,8 @@ class LocalVarView(VariablesFrame):
         self._last_progress_message = None
         super().__init__(master)
         
+        self.name = "LVV"
+        self.repr_db = {}
 
         ttk.Style().configure("Centered.TButton", justify="center")
         self.back_button = ttk.Button(
@@ -67,9 +71,20 @@ class LocalVarView(VariablesFrame):
         raise ValueError("Could not find frame %d" % frame_id)
     
     def show_variables(self, globals_, module_name, locals_ = None, is_active=True):
+        self.repr_db = {}
         self.clear_error()
+        for obj in globals_:
+            repr = globals_[obj].repr
+            new_repr, b, h = repr_format(self, repr)
+            self.repr_db[repr] = new_repr
+            globals_[obj] = ValueInfo(globals_[obj].id, new_repr)
         if not locals_:
             groups = [("GLOBALS", globals_)]
         else:
+            for obj in locals_:
+                repr = locals_[obj].repr
+                new_repr, b, h = repr_format(self, repr)
+                self.repr_db[repr] = new_repr
+                locals_[obj] = ValueInfo(locals_[obj].id, new_repr)
             groups = [("LOCALS", locals_), ("GLOBALS", globals_)]
         self.update_variables(groups)

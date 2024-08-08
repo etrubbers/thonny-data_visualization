@@ -15,6 +15,7 @@ builtin_types.append("<class 'method'>")
 builtin_types.append("<class 'NoneType'>")
 builtin_types.append("<class 'module'>")
 builtin_types.append("<class 'builtin_function_or_method'>")
+builtin_types.remove("<class 'type'>")
 builtin_data_struct = ["<class 'dict'>", "<class 'list'>", "<class 'set'>", "<class 'tuple'>"]
 
 logger = getLogger(__name__)
@@ -32,6 +33,8 @@ class HierarchicalView(ui_utils.TreeFrame):
 
         self.lazy_on = True # Permet de définir si le développement de la vue hiérarchique se fait de façon lazy
         self.iter = 0
+        self.clean = True
+        self.extend_max = 9
 
         self.name = "HV"
 
@@ -43,6 +46,7 @@ class HierarchicalView(ui_utils.TreeFrame):
 
         self.lazy_id = None # Fonctionne si le programme est en lazy et stocke l'ID su noeud à développer
         self.extended = {} # Enregistre tous les noeuds déjà étendus dans le cas lazy pour ne pas devoir les redévelopper
+        self.obj_len = {}
 
         self.tree_db = {} # Stockage de chaque objet rencontré à partir de sa véritable ID et attribution d'un tuple composé de sa représentation en string et de son nom
         self.type_db = {} # Stockage du nombre d'objet d'un certain type que le programme rencontre (pour simplifier les ID)
@@ -76,6 +80,7 @@ class HierarchicalView(ui_utils.TreeFrame):
     def restart(self, event=None):
 
         self.lazy_on = True
+        self.obj_len = {}
 
         self.parent_id = None
         self.categorie_id = (None,None)
@@ -165,7 +170,11 @@ class HierarchicalView(ui_utils.TreeFrame):
                 object_infos["name"] = self.object_name # Ajout du nom (qui a été attribué à la variable par l'utilisateur)
 
                 if (self.lazy_id is not None): # Si le but était de développer un objet existant alors nous passons directement à la fonction "extend"
-                    self.extend(object_infos, self.lazy_id)
+                    if (self.object_name == "next"):
+                        print(self.obj_len[self.lazy_id])
+                        self.extend(object_infos, self.lazy_id, self.obj_len[self.lazy_id])
+                    else :    
+                        self.extend(object_infos, self.lazy_id)
                     self.lazy_id = None
 
                 elif (object_infos["type"] != "<class 'method'>"): # Choix que nous avons fait de ne pas afficher les méthodes des différentes classes
@@ -180,7 +189,7 @@ class HierarchicalView(ui_utils.TreeFrame):
             sender.fast_send(self)
     
     '''Permet d'afficher proprement les différentes informations nécessaires à la vue hiérarchique et de connecter le noeud contenant ces informations à l'arbre de la vue'''
-    def format(self, object_infos): 
+    def format(self, object_infos):
 
         if (self.parent_id == "Globals" or self.parent_id == "Locals"): # Si le noeud est le premier de la partie des variables globales ou de celle des locales
             if self.categorie_id[0] == self.parent_id:
@@ -193,14 +202,16 @@ class HierarchicalView(ui_utils.TreeFrame):
         
         txt = ""
         txt = object_infos["name"]
-        node_id = self.tree.insert(self.parent_id, "end", text=txt, open=False) # On ajoute le noeud avec l'affichage de son nom (donné à la variable par l'utilisateur)
+        if (self.parent_id in self.obj_len and self.obj_len[self.parent_id] > self.extend_max+1):
+            node_id = self.tree.insert(self.parent_id, index=len(self.tree.get_children(self.parent_id))-1, text=txt, open=False) # On ajoute le noeud avec l'affichage de son nom (donné à la variable par l'utilisateur)
+        else : node_id = self.tree.insert(self.parent_id, "end", text=txt, open=False) # On ajoute le noeud avec l'affichage de son nom (donné à la variable par l'utilisateur)
         self.tree.set(node_id, "id", object_infos["id"])
 
         tp = object_infos["type"]
         
         if (object_infos["id"] not in self.tree_db.keys()): # Si l'objet que l'on rencontre est un objet que l'on ne connait pas encore
 
-            s, at_bool = repr_format(self, object_infos['repr']) # On va formater sa représentation pour qu'elle soit la plus claire et facilement interprétable possible
+            s, at_bool, homemade = repr_format(self, object_infos['repr']) # On va formater sa représentation pour qu'elle soit la plus claire et facilement interprétable possible
             
             if (tp not in builtin_types): # Si la variable recherchée est bel et bien un objet considéré comme intéressant
 
@@ -211,11 +222,11 @@ class HierarchicalView(ui_utils.TreeFrame):
                     s += " n°" + str(self.type_db[tp]) # Cette attribution simplifiée attribue un numéro correspondant au nombre d'objet de ce type déjà rencontré
 
                 name = object_infos["name"] # Le nom de l'objet désigné par l'utilisateur
-                if (self.tree.set(self.parent_id, "id") != "Globals" and self.tree.set(self.parent_id, "id") != "Locals"): # Si som'est un enfant, on l'utilise en référence à son objet parent
-                    name = self.tree_db[self.tree.set(self.parent_id, "id")][1] + "." + str(name)
                 
-                self.tree_db[object_infos["id"]] = (s, name)
-                self.repr_db[object_infos["repr"]] = s + " (" + name + ")"
+                self.tree_db[object_infos["id"]] = (s, name, homemade)
+
+                if (self.tree.set(self.parent_id, "id") == "Globals" or self.tree.set(self.parent_id, "id") == "Locals"):
+                    self.repr_db[object_infos["repr"]] = s + " (" + str(name) + ")"
 
             if (len(s) > 200):
                 s = s[:75] + " ... " + s[-75:]
@@ -232,57 +243,89 @@ class HierarchicalView(ui_utils.TreeFrame):
                 self.extend(object_infos, node_id)
 
     '''Etend le noeud choisi (node_id) avec les informations le concernant'''
-    def extend(self, object_infos, node_id):
+    def extend(self, object_infos, node_id, iter = 0):
         tp = object_infos['type']
+        obj_id = object_infos['id']
 
         if (tp not in builtin_types): # Si l'objet est intéressant à développer
+            if (self.clean and not self.tree_db[obj_id][2]):
+                self.tree.insert(node_id, "end", text="See more details in the Object inspector", open=True)
+                return
             attributes = object_infos['attributes']
-            if (len(attributes) != 0): # S'il possède des attributs 
+            keys = list(attributes.keys())
+            if (len(attributes) > iter): # S'il possède des attributs 
                 self.var_to_request["children"][node_id] = {}
-                i = 0
-                for attr in attributes:
-                    if(i > 100):
-                        self.var_to_request["children"][node_id]["..."] = None
+                i = iter
+                for attr in keys[iter:]:
+                    if(i > self.extend_max + iter):
+                        if not iter : self.var_to_request["children"][node_id]["..."] = None
+                        self.obj_len[node_id] = i
                         break
-                    if ('<built-in method' not in attributes[attr].repr): # Choix d'implémentation : on n'affiche pas les méthodes builtin
-                        self.var_to_request["children"][node_id][attr] = ValueInfo(attributes[attr].id, attributes[attr].repr)
-                        i+=1
+                    self.var_to_request["children"][node_id][attr] = ValueInfo(attributes[attr].id, attributes[attr].repr)
+                    self.obj_len[node_id] = i
+                    i+=1
+                    if (iter and self.obj_len[node_id] >= len(attributes) - 1):
+                            clic = self.tree.get_children(node_id)[-1]
+                            self.tree.item(clic, text="")
+                            self.obj_len[node_id] = iter+i-1
         
         elif (tp in builtin_data_struct): # Si l'objet est une structure de donnée builtin intéressante
             if (tp == "<class 'dict'>"):
                 entries = object_infos['entries']
-                for i in range(len(entries)):
-                    entr_id = self.tree.insert(node_id, "end", text=i, open=True)
-                    entr = entries[i]
-                    self.var_to_request["children"][entr_id] = {}
-                    self.var_to_request["children"][entr_id]["key"] = ValueInfo(entr[0].id, entr[0].repr)
-                    self.var_to_request["children"][entr_id]["value"] = ValueInfo(entr[1].id, entr[1].repr)
-                    if(i >= 100):
-                        self.var_to_request["children"][node_id]["..."] = None
-                        break
+                if (len(entries) > iter):
+                    for i in range(iter, len(entries)):
+                        if(i > self.extend_max + iter):
+                            if not iter : self.var_to_request["children"][node_id]["..."] = None
+                            self.obj_len[node_id] = i
+                            break
+                        entr_id = self.tree.insert(node_id, "end", text=i, open=True)
+                        entr = entries[i]
+                        self.var_to_request["children"][entr_id] = {}
+                        self.var_to_request["children"][entr_id]["key"] = ValueInfo(entr[0].id, entr[0].repr)
+                        self.var_to_request["children"][entr_id]["value"] = ValueInfo(entr[1].id, entr[1].repr)
+                        self.obj_len[node_id] = i
+                        if (iter and self.obj_len[node_id] >= len(entries) - 1):
+                            clic = self.tree.get_children(node_id)[-1]
+                            self.tree.item(clic, text="The end")
+                            self.obj_len[node_id] = iter+i
+                        
             else: # Pour les listes, tuples, ...
                 elements = object_infos['elements']
-                if (len(elements) != 0):
+                if (len(elements) > iter):
                     self.var_to_request["children"][node_id] = {}
-                    for i in range(len(elements)):
+                    for i in range(iter, len(elements)):
+                        if(i > self.extend_max + iter):
+                            if not iter : self.var_to_request["children"][node_id]["..."] = None
+                            self.obj_len[node_id] = i
+                            break
                         elem = elements[i]
                         self.var_to_request["children"][node_id][i] = ValueInfo(elem.id, elem.repr)
-                        if(i >= 100):
-                            self.var_to_request["children"][node_id]["..."] = None
-                            break
+                        self.obj_len[node_id] = i
+                        if (iter and self.obj_len[node_id] >= len(elements) - 1):
+                            clic = self.tree.get_children(node_id)[-1]
+                            self.tree.item(clic, text="The end")
+                            self.obj_len[node_id] = iter+i
+                        
     
     '''Permet d'étendre de façon lazy les noeuds de l'arbre correspondant à la vue hiérarchhique'''
     def lazy_adding(self, event):
         node_id = self.tree.focus() # On récupère l'ID du noeud
-        children = self.tree.get_children(node_id)
-
-        if (node_id not in self.extended.keys() and len(children) == 1): # On vérifie que le noeud n'a pas déjà été étendu et qu'il correspond bien à un objet développable
-            self.tree.delete(children[0]) # On supprime le noeud enfant indicateur
-            self.extended[node_id] = True
-            self.lazy_id = node_id
+        if (self.tree.item(node_id, "text") == "Click here to see more"):
+            parent_id = self.tree.parent(node_id)
+            self.lazy_id = parent_id
             self.var_to_request["lazy"] = {}
-            self.var_to_request["lazy"][node_id] = ValueInfo(self.tree.set(node_id, "id"), "lazy") # On va récupérer dans l'arbre l'ID de l'objet correspondant au noeud à développer
+            self.var_to_request["lazy"]["next"] = ValueInfo(self.tree.set(parent_id, "id"), "next") # On va récupérer dans l'arbre l'ID de l'objet correspondant au noeud à développer
             self.send_request()
+        else :
+            children = self.tree.get_children(node_id)
+
+            if (node_id not in self.extended.keys() and len(children) == 1): # On vérifie que le noeud n'a pas déjà été étendu et qu'il correspond bien à un objet développable
+                self.tree.delete(children[0]) # On supprime le noeud enfant indicateur
+                self.extended[node_id] = True
+                self.lazy_id = node_id
+                self.var_to_request["lazy"] = {}
+                self.var_to_request["lazy"][node_id] = ValueInfo(self.tree.set(node_id, "id"), 0) # On va récupérer dans l'arbre l'ID de l'objet correspondant au noeud à développer
+                self.send_request()
     
     def add_next(self, parent, var):
         self.tree.insert(parent, "end", text=var, open=False)
@@ -291,23 +334,3 @@ class HierarchicalView(ui_utils.TreeFrame):
     def _clear_tree(self):
         for child_id in self.tree.get_children():
             self.tree.delete(child_id)
-
-    '''TODO !!
-    Permet de mettre en évidence l'objet sélectionner dans la vue hiérarchique en affichant les détails dans l'inspecteur d'objet'''
-    def show_object(self, event):
-        obj_id = event.object_id
-        node_id = self.tree_db[obj_id]
-        children = self.tree.get_children(node_id)
-
-        self.tree.focus_set(node_id)
-
-        if (node_id in self.extended.keys()):
-            self.tree.item(node_id, open=True)
-
-        elif (len(children) == 1):
-            self.tree.delete(children[0])
-            self.extended[node_id] = True
-            self.lazy_id = node_id
-            self.var_to_request["lazy"] = {}
-            self.var_to_request["lazy"][node_id] = ValueInfo(self.tree.set(node_id, "id"), "lazy")
-            self.send_request()

@@ -12,12 +12,17 @@
 2. Run or debug your program
 3. Use the little colored circles to see the links between your variables
 
-- In this view you can move the different blocks and recenter them with the Recenter button above
+- In this view you can move the different blocks and replace them by default with the Align button above
 - You can also use the + and - buttons to see or hide details about your variables
-- Finally, you can use the Extend and Reduce buttons to display or hide the details of all the variables
+- You can use the Extend and Reduce buttons to display or hide the details of all the variables
+- You can use the button above on the right to allow the view to show more (or less) informations about your variables, especially the imported ones 
 
-## The memory references
+## Choices of implementation
 
+### For the hierarchical view
+
+- Memory references :
 To simplify references to the memory, the various variables will be given a unique number by which they can be identified.
-This number will only be assigned to explicit variables; implicit variables will be assigned the word unnamed.
+This number will only be assigned to explicit variables.
 
+- 

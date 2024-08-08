@@ -9,12 +9,14 @@ from thonnycontrib.data_visualization.Graphical import DB
 from thonnycontrib.data_visualization.representation_format import repr_format
 import thonnycontrib.data_visualization.sender as sender
 
+'''Enregistrement en mémoire des arrays décrivant les builtin types pour pouvoir les détecter et les traiter séparément'''
 builtin_types = [str(getattr(builtins, d)) for d in dir(builtins) if isinstance(getattr(builtins, d), type)]
 builtin_types.append("<class 'function'>")
 builtin_types.append("<class 'method'>")
 builtin_types.append("<class 'NoneType'>")
 builtin_types.append("<class 'module'>")
 builtin_types.append("<class 'builtin_function_or_method'>")
+builtin_types.remove("<class 'type'>")
 builtin_data_struct = ["<class 'dict'>", "<class 'list'>", "<class 'set'>", "<class 'tuple'>"]
 
 logger = getLogger(__name__)
@@ -24,20 +26,32 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         super().__init__(master)
         
         self.rect_padding = 5
+        self.sentenceSeeMoreObInsp = "See more details in the Object inspector"
+        self.sentenceSeeMore100 = "Click here to see more"
+        self.rstComplex = "Rerun to see more details in objects"
+        self.getComplex = "Click to see more details in objects "
+        self.rstSimple = "Rerun to see less details in objects"
+        self.getSimple = "Click to see less details in objects "
 
         self.iter = 0
+        self.extend_max = 9
 
         self.name = 'GV'
+
+        self.clean = True
 
         self.selected_node = None
         self.offset = None
         self.parent_id = None
+        self.lazy_id = None
         self.object_id = None
         self.object_name = None
         self.var_to_request = {}
+        self.clickToSeeMore=False
         self.extendeRequest = None
         self.extendeRequestReduc=None
 
+        self.obj_len = {}
         self.tree_db = {}
         self.repr_db = {}
         self.type_db = {}
@@ -53,9 +67,16 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         get_workbench().bind("get_object_info_response", self._handle_object_info_event, True)
         get_workbench().bind("BackendRestart", self._on_backend_restart, True)
 
+    #Permet de scroller avec la roulette de la souris quand la souris est relâchée.
+    def _on_mouse_wheel(self, event):
+        DB.on_mouse_wheel(self, event)
+    
+    #Permet de scroller avec la roulette de la souris quand la souris est enfoncée.
+    def _on_shift_mouse_wheel(self, event):
+        DB.on_shift_mouse_wheel(self, event)
 
+    #definit l'action pour le bouton "extend" à savoir, étend tout les nœud et mettre ton futur nœud en mode étendu 
     def on_extendButton_click(self):
-        # Define the action for button 1
         self.setReduc=0
         for i in self.G.nodes:
             self.G.nodes[i]['reduced']=0
@@ -63,8 +84,10 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.selected_button_extReduc.set(1)
         self.update_button_states()
 
+    #definit l'action pour le bouton "reduce" à savoir, réduit tout les nœuds
+    # et mettre leur boulles pointeurs sur : 2 si il y a des pointeurs ouverts et fermés, 3 si ils sont tous ouverts et 4 si ils sont tous fermés
+    # et mettre ton futur nœud en mode réduit 
     def on_ReducButton_click(self):
-        # Define the action for button 2
         self.setReduc=4
         for node in self.G.nodes:
             if len(self.G.nodes[node]['pointeur'])<1:
@@ -95,19 +118,43 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         
     def on_RecenteredButton_click(self):
         DB.reCentrer(self)
+        
+    def on_ExpertButton_click(self):
+        if self.expert_mode == 0 :
+            self.expert_mode = 1
+            self.ExpertButton.config(text=self.rstComplex, relief=tk.SUNKEN)
+        elif self.expert_mode ==1:
+            self.expert_mode = 0
+            self.ExpertButton.config(text=self.getComplex, relief=tk.RAISED)
+        elif self.expert_mode ==2:
+            self.expert_mode=3
+            self.ExpertButton.config(text=self.rstSimple, relief=tk.SUNKEN)
+        else:
+            self.expert_mode=2
+            self.ExpertButton.config(text=self.getSimple, relief=tk.RAISED)
+
 
     def _on_backend_restart(self, event=None):
+        if self.expert_mode==1:
+            self.expert_mode=2
+            self.ExpertButton.config(text=self.getSimple, relief=tk.RAISED)
+        elif self.expert_mode==3:
+            self.expert_mode=0
+            self.ExpertButton.config(text=self.getComplex, relief=tk.RAISED)
         DB.clearAll(self)
         self.parent_id = None
+        self.lazy_id = None
         self.object_id = None
         self.object_name = None
         self.var_to_request = {}
+        self.clickToSeeMore=False
         self.extendeRequest = None
         self.extendeRequestReduc=None
         self.tree_db = {}
         self.repr_db = {}
         self.type_db = {}
         self.nodeCreated={}
+        self.obj_len = {}
         self.edgeCreated=set()
         self._last_progress_message = None
 
@@ -125,15 +172,23 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
             elif DB.isCliqueOnReducPointeur(self, event.x, event.y, node):
                 self.extendLazyReduc(node)
             elif not DB.isReduced(self,node):
-                for pB in range(DB.getLenPointeur(self, node)):
-                    if DB.isCliqueOnPointeur(self, event.x, event.y, node, pB):
-                        if DB.isPointeurOpen(self, node, pB):
-                            DB.changePointeur(self, node, pB)
-                            DB.draw_graph(self)
-                        else:
-                            #DB.changePointeur(self, node, pB)
-                            self.extendLazy(self.tree_db[DB.getPointeurId(self, node, pB)][0], DB.getPoiteurName(self, node, pB),self.tree_db[DB.getPointeurId(self, node, pB)][1], node, pB)
-            
+                if DB.isCliqueOnSeeMore(self, event, node):
+                    self.clickToSeeMore=True
+                    self.G.nodes[node]['contenue'] = self.G.nodes[node]['contenue'][:-23]
+                    self.var_to_request['lazy']["next"] = ValueInfo(node, "next")
+                    self.lazy_id = node
+                    self.send_request()
+                else :
+                    for pB in range(DB.getLenPointeur(self, node)):
+                        if DB.isCliqueOnPointeur(self, event.x, event.y, node, pB):
+                            if DB.isPointeurOpen(self, node, pB):
+                                DB.changePointeur(self, node, pB)
+                                DB.draw_graph(self)
+                            else:
+                                #DB.changePointeur(self, node, pB)
+                                self.extendLazy(self.tree_db[DB.getPointeurId(self, node, pB)][0], DB.getPoiteurName(self, node, pB),self.tree_db[DB.getPointeurId(self, node, pB)][1], node, pB)
+                    
+
     def on_node_drag(self, event):
         # Move the selected node to the mouse position
         DB.moveNode(self, event, self.selected_node, self.offset)
@@ -160,9 +215,12 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.nodeCreated={}
         self.edgeCreated=set()
         
+        self.obj_len = {}
         self.parent_id = None
+        self.lazy_id = None
         self.object_id = None
         self.object_name = None
+        self.clickToSeeMore=False
         self.extendeRequest = None
         self.extendeRequestReduc=None
         self.tree_db = {}
@@ -179,28 +237,39 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.var_to_request["globals"] = globalst
         self.var_to_request["locals"] = localst
         self.var_to_request["children"] = {}
+        self.var_to_request["lazy"] = {}
 
         self.send_request()
     
     def send_request(self):
-        if not self.var_to_request["globals"] and not self.var_to_request["locals"] and not self.var_to_request["children"]:
+        if not self.var_to_request["globals"] and not self.var_to_request["locals"] and not self.var_to_request["children"] and not self.var_to_request["lazy"]:
             self.var_to_request["globals"] = {}
             self.var_to_request["locals"] = {}
             self.var_to_request["children"] = {}
+            self.var_to_request["lazy"] = {}
             self.object_id = None
             self.parent_id = None
+            self.lazy_id = None
             if self.extendeRequest:
                 DB.showNodeEdge(self, self.extendeRequest[0], self.extendeRequest[1])
-                self.extendeRequest=None
-                self.extendeRequestReduc=None
+                self.clickToSeeMore=False
+                self.extendeRequest = None
+                self.extendeRequestReduc = None
             elif self.extendeRequestReduc:
                 parentID=self.extendeRequestReduc[0]
                 pB=self.extendeRequestReduc[1]
-                self.extendeRequest=None
-                self.extendeRequestReduc=None
+                self.clickToSeeMore=False
+                self.extendeRequest = None
+                self.extendeRequestReduc = None
                 DB.showNodeEdge(self, parentID, pB, False)
                 self.extendLazyReduc2(parentID, pB+1)
+            elif self.clickToSeeMore:
+                self.clickToSeeMore=False
+                self.extendeRequest = None
+                self.extendeRequestReduc=None
+                DB.draw_graph(self)
             else:
+                self.clickToSeeMore=False
                 self.extendeRequest = None
                 self.extendeRequestReduc=None
                 self.clear_some()
@@ -215,15 +284,20 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
             if "error" in msg.info.keys() or (hasattr(msg, "not_found") and msg.not_found):
                 self.object_id = None
                 self.object_name = None
+                self.clickToSeeMore=False
                 self.extendeRequest = None
                 self.extendeRequestReduc=None
-                # DB.draw_graph(self) #TODO
                 
             else:
                 object_infos = msg.info
                 object_infos["name"] = self.object_name
+
+                if (self.lazy_id is not None): # Si le but était de développer un objet existant alors nous passons directement à la fonction "extend"
+                    if (self.object_name == "next"):
+                        self.extendSuite(object_infos, None, "next", self.obj_len[object_infos["id"]])
+                    self.lazy_id = None
                 
-                if (object_infos["type"] != "<class 'method'>"):
+                elif (object_infos["type"] != "<class 'method'>" or self.expert_mode >= 2):
                     self.format(object_infos)
 
                 self.send_request()
@@ -253,34 +327,26 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         DB.addNodeText(self, self.parent_id, name)
 
         tp = object_infos["type"]
+
+        rep = object_infos['repr']
+
+        if tp in builtin_data_struct:# or tp == "<class 'method'>":
+            #print(rep)
+            rep = object_infos['full_type_name']
         
-        s, at_bool = repr_format(self, object_infos['repr'])
+        s, at_bool, homemade = repr_format(self, rep)
             
         if (tp not in builtin_types or tp in builtin_data_struct):
             
             if (object_infos["id"] not in self.tree_db.keys()):
-
-                if at_bool:
-                    if (tp not in self.type_db.keys()):
-                        self.type_db[tp] = {}
-                        self.type_db[tp]["len"] = 1
-                        self.type_db[tp][object_infos["id"]] = 1
-                    else:
-                        if (object_infos["id"] not in self.type_db[tp].keys()):
-                            self.type_db[tp]["len"] += 1
-                            self.type_db[tp][object_infos["id"]] = self.type_db[tp]["len"]
-                    s += " n°" + str(self.type_db[tp][object_infos["id"]])
-                    
-                elif (tp in builtin_data_struct):
-                    s = tp[8:-2] + " : " + s
                     
                 if (len(s) > 100):
                     s = s[:40] + " ... " + s[-40:]
 
-                self.tree_db[object_infos["id"]] = (s, object_infos)
+                self.tree_db[object_infos["id"]] = (s, object_infos, homemade)
                 self.repr_db[object_infos["repr"]] = s
                 DB.addPointeur(self, self.parent_id, name, object_infos['id'], self.nodeCreated[self.parent_id])
-                self.extend(s, name, object_infos)
+                self.extend(name, object_infos)
                 
             else:
                 DB.addPointeur(self, self.parent_id, name, object_infos['id'], self.nodeCreated[self.parent_id])
@@ -290,9 +356,13 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                     
                 
         else :
-            DB.addNodeText(self, self.parent_id, " : " + s, False)
+            if (object_infos["name"].endswith(" : ")):
+                DB.addNodeText(self, self.parent_id, s, False)
+            else :
+                DB.addNodeText(self, self.parent_id, " = " + s, False)
+                
 
-    def extend(self, s, name, object_infos):
+    def extend(self, name, object_infos):
         node_id = object_infos["id"]
         if DB.isThereNode(self, node_id):
             self.extendSuite(object_infos, self.parent_id, name)
@@ -319,6 +389,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
             DB.changeReducPointeur(self, parentID)
             DB.draw_graph(self)
         else:
+            DB.changeReducPointOrange(self, parentID)
             self.extendLazyReduc2(parentID, 0)
     
     def extendLazyReduc2(self, parentID, n):
@@ -344,21 +415,27 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         DB.changeReducPointeur(self, parentID)
         DB.draw_graph(self)
         
-    def extendSuite(self,object_infos, parentID, name):
+    def extendSuite(self,object_infos, parentID, name, iter = 0):
         node_id = object_infos["id"]
-        DB.addEdge(self, parentID, node_id,name)
-        if (parentID, node_id,name) not in self.edgeCreated:
-            self.edgeCreated.add((parentID, node_id,name))
+        if iter == 0:
+            DB.addEdge(self, parentID, node_id,name)
+            if (parentID, node_id,name) not in self.edgeCreated:
+                self.edgeCreated.add((parentID, node_id,name))
         
         tp = object_infos['type']
         if (tp not in builtin_types):
+            if (self.expert_mode<2 and not self.tree_db[node_id][2]):
+                DB.addNodeText(self, node_id, self.sentenceSeeMoreObInsp)
+                return
             attributes = object_infos['attributes']
-            if (len(attributes) != 0):
+            keys = list(attributes.keys())
+            if (len(attributes) > iter):
                 self.var_to_request["children"][node_id] = {}
-                i = 0
-                for attr in attributes:
-                    if(i > 100):
+                i = iter
+                for attr in keys[iter:]:
+                    if(i > self.extend_max + iter):
                         self.var_to_request["children"][node_id]["..."] = None
+                        self.obj_len[node_id] = i
                         break
                     if ('<built-in method' not in attributes[attr].repr):
                         self.var_to_request["children"][node_id][attr] = ValueInfo(attributes[attr].id, attributes[attr].repr)
@@ -369,25 +446,28 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         elif (tp in builtin_data_struct):
             if (tp == "<class 'dict'>"):
                 entries = object_infos['entries']
-                if (len(entries) != 0):
+                if (len(entries) > iter):
                     self.var_to_request["children"][node_id] = {}
-                    for i in range(len(entries)):
-                        entr = entries[i]
-                        self.var_to_request["children"][node_id][str(i) + ".key"] = ValueInfo(entr[0].id, entr[0].repr)
-                        self.var_to_request["children"][node_id][str(i) + ".value"] = ValueInfo(entr[1].id, entr[1].repr)
-                        if(i >= 100):
+                    for i in range(iter, len(entries)):
+                        if(i > self.extend_max + iter):
                             self.var_to_request["children"][node_id]["..."] = None
+                            self.obj_len[node_id] = i
                             break
+                        entr = entries[i]
+                        self.var_to_request["children"][node_id]["⮚   key "+ str(i) + " : "] = ValueInfo(entr[0].id, entr[0].repr)
+                        self.var_to_request["children"][node_id]["   value "+ str(i) + " : "] = ValueInfo(entr[1].id, entr[1].repr)
             else:
                 elements = object_infos['elements']
-                if (len(elements) != 0):
+                if (len(elements) > iter):
                     self.var_to_request["children"][node_id] = {}
-                    for i in range(len(elements)):
-                        elem = elements[i]
-                        self.var_to_request["children"][node_id][i] = ValueInfo(elem.id, elem.repr)
-                        if(i >= 100):
+                    for i in range(iter, len(elements)):
+                        if(i > self.extend_max + iter):
                             self.var_to_request["children"][node_id]["..."] = None
+                            self.obj_len[node_id] = i
                             break
+                        elem = elements[i]
+                        self.var_to_request["children"][node_id][str(i) + " : "] = ValueInfo(elem.id, elem.repr)
+                        
 
     def add_next(self, parent, var):
         self.G.nodes[parent]['contenue'] += "\n" + var

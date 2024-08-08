@@ -68,7 +68,7 @@ t_complex = (node1, node2)
 s_complex = {node1, node2, node3}
 
 # Variable d'import complexe
-na = np.array([node1, node2, node3])
+na_complex = np.array([node1, node2, node3])
 
 # Objet créé complexe
 linked_list = LinkedList()

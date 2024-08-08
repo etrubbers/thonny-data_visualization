@@ -19,8 +19,12 @@ def init_Graph(self):
     self.extendButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 1 else tk.RAISED)
     self.ReducButton.config(relief=tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED)
     
-    self.RecenteredButton = tk.Button(self.toolbar, text="Recenter", command=self.on_RecenteredButton_click)
+    self.RecenteredButton = tk.Button(self.toolbar, text="Align", command=self.on_RecenteredButton_click)
     self.RecenteredButton.pack(side=tk.LEFT, padx=5, pady=5)
+    
+    self.expert_mode = 0
+    self.ExpertButton = tk.Button(self.toolbar, text=self.getComplex, command=self.on_ExpertButton_click)
+    self.ExpertButton.pack(side=tk.RIGHT, padx=5, pady=5)
     
     self.canvas_frame = tk.Frame(self)
     self.canvas_frame.grid(row=1, column=0, sticky="nsew")
@@ -45,9 +49,20 @@ def init_Graph(self):
     #Lier les "events" de la souris sur le canvas
     self.canvas.bind("<ButtonPress-1>", self.on_node_click)
     self.canvas.bind("<B1-Motion>", self.on_node_drag)
+    
+    self.canvas.bind("<MouseWheel>", self._on_mouse_wheel)
+    self.canvas.bind("<Shift-MouseWheel>", self._on_shift_mouse_wheel)
         
 def delete(self):
     self.canvas.delete("all")
+    
+#Permet de scroller avec la roulette de la souris quand la souris est relâchée.
+def on_mouse_wheel(self, event):
+    self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+#Permet de scroller avec la roulette de la souris quand la souris est enfoncée.
+def on_shift_mouse_wheel(self, event):
+    self.canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
 
 #Retourne la taille du nœud (XRight, YDown) quand il est réduit ou étendu
 #Retourne la position (X, Y) centrale du bouton de réduction/extantion
@@ -64,15 +79,20 @@ def getTailleBox(self, node):
     text_id = self.canvas.create_text(0, 0, text=txt, fill='black', anchor='nw')
     bbox = self.canvas.bbox(text_id)
     self.canvas.delete(text_id)
+    
+    text_id = self.canvas.create_text(0, 0, text=text_lines[0], fill='black', anchor='nw')
+    bboxTitle = self.canvas.bbox(text_id)
+    self.canvas.delete(text_id)
+    
     if self.G.nodes[node]['reduced']>0:
         self.line_height = bbox[3] - bbox[1]
         if len(self.G.nodes[node]['pointeur'])==0:
-            return (bbox[2]+self.line_height+3*self.padding, bbox[3]+2*self.padding), (bbox[2]+2*self.padding+self.line_height/2, self.padding+self.line_height/2)
+            return (bbox[2]+self.line_height+3*self.padding, bbox[3]+2*self.padding), (bbox[2]+2*self.padding+self.line_height/2, self.padding+self.line_height/2), (bboxTitle[2]+self.padding, bboxTitle[3]+self.padding)
         else:
-            return (bbox[2]+2*self.line_height+4*self.padding, bbox[3]+2*self.padding), (bbox[2]+2*self.padding+self.line_height/2, self.padding+self.line_height/2)
+            return (bbox[2]+2*self.line_height+4*self.padding, bbox[3]+2*self.padding), (bbox[2]+2*self.padding+self.line_height/2, self.padding+self.line_height/2), (bboxTitle[2]+self.padding, bboxTitle[3]+self.padding)
     else:
         self.line_height = (bbox[3] - bbox[1]) / len(text_lines)
-        return (bbox[2]+self.line_height+3*self.padding, bbox[3]+2*self.padding), (bbox[2]+2*self.padding+self.line_height/2, self.padding+self.line_height/2)
+        return (bbox[2]+self.line_height+3*self.padding, bbox[3]+2*self.padding), (bbox[2]+2*self.padding+self.line_height/2, self.padding+self.line_height/2), (bboxTitle[2]+self.padding, bboxTitle[3]+self.padding)
 
 #Configure le scroll pour pouvoir scroller et donc observer tous les nœuds
 def scrollregion(self):
@@ -95,6 +115,8 @@ def scrollregion(self):
 # si le nœud est étendu, dessine aussi les lignes entre les lignes de texte et dessine les boules des pointeurs
 # si le nœud est réduit, dessine aussi la boule pointeur du nœud réduit
 def boite(self, node):
+    if self.G.nodes[node]['pos'] ==None:
+        return
     txt = None
     if self.G.nodes[node]['reduced']>0:
         text_lines = self.G.nodes[node]['contenue'].split('\n')
@@ -105,6 +127,14 @@ def boite(self, node):
     else:
         txt=self.G.nodes[node]['contenue']
     self.canvas.create_rectangle(self.G.nodes[node]['pos'][0], self.G.nodes[node]['pos'][1], self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][0], self.G.nodes[node]['pos'][1] + self.G.nodes[node]['taille'][1], fill=self.G.nodes[node]['couleur'], tags=node)
+    if self.G.nodes[node]['reduced']>0:
+        self.canvas.create_rectangle(self.G.nodes[node]['pos'][0]+self.padding, self.G.nodes[node]['pos'][1]+self.padding, self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]-(self.line_height/2)-self.padding, self.G.nodes[node]['pos'][1] + self.G.nodes[node]['taille'][1]-self.padding, fill="yellow", outline='', tags=node)
+    else:
+        self.canvas.create_rectangle(self.G.nodes[node]['pos'][0]+self.padding, self.G.nodes[node]['pos'][1]+self.padding, self.G.nodes[node]['pos'][0] + self.G.nodes[node]['tailleTitre'][0], self.G.nodes[node]['pos'][1] + self.line_height+self.padding, fill="yellow", outline='', tags=node)
+        parts = self.G.nodes[node]['contenue'].rsplit('\n', 1)
+        if len(parts)>1:
+            if parts[1]==self.sentenceSeeMore100:
+                self.canvas.create_rectangle(self.G.nodes[node]['pos'][0], self.G.nodes[node]['pos'][1] + self.G.nodes[node]['taille'][1]-self.line_height-self.padding, self.G.nodes[node]['pos'][0] + self.G.nodes[node]['taille'][0], self.G.nodes[node]['pos'][1] + self.G.nodes[node]['taille'][1], fill="cyan", outline='', tags=node)
     self.canvas.create_text(self.G.nodes[node]['pos'][0]+self.padding, self.G.nodes[node]['pos'][1]+self.padding, text=txt, fill='black', anchor='nw', tags=node)
     creeReducBox(self, node)
     if self.G.nodes[node]['reduced']>0:
@@ -127,6 +157,22 @@ def creeReducBox(self,node):
         self.canvas.create_text(self.G.nodes[node]['pos'][0]+self.G.nodes[node]['reduc'][0], self.G.nodes[node]['pos'][1]+self.G.nodes[node]['reduc'][1], text="-", fill='black', anchor='center', tags=node)
 
 #Est une sous-fonction de "boite"
+#Dessine le rond du pointeur "pB" du nœud "node" quand ce nœud est sous forme réduite et qu'il a des pointeurs
+def CreePointerReduced(self,node):
+    if len(self.G.nodes[node]['pointeur'])<1:
+        return
+    xLeft = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding+2
+    xRigh = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height+(self.line_height/2)+self.padding-2
+    yTop = self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]-(self.line_height/2)+2
+    yDown = self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]+(self.line_height/2)-2
+    if self.G.nodes[node]['reduced']==2:
+        self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='orange', outline='black', tags=node)
+    elif self.G.nodes[node]['reduced']==3:
+        self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='green', outline='black', tags=node)
+    else:
+        self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='red', outline='black', tags=node)
+
+#Est une sous-fonction de "boite"
 #Dessine dans la boite du nœud "node" les lignes entre chaque ligne de texte et lance "DrawPointeur" pour chaque pointeur du node
 def CreeLineAndPointer(self,node):
     text_lines=self.G.nodes[node]['contenue'].split('\n')
@@ -144,22 +190,6 @@ def CreeLineAndPointer(self,node):
                     break
 
 #Est une sous-fonction de "boite"
-#Dessine le rond du pointeur "pB" du nœud "node" quand ce nœud est sous forme réduite et qu'il a des pointeurs
-def CreePointerReduced(self,node):
-    if len(self.G.nodes[node]['pointeur'])<1:
-        return
-    xLeft = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding+2
-    xRigh = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height+(self.line_height/2)+self.padding-2
-    yTop = self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]-(self.line_height/2)+2
-    yDown = self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]+(self.line_height/2)-2
-    if self.G.nodes[node]['reduced']==2:
-        self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='orange', outline='black', tags=node)
-    elif self.G.nodes[node]['reduced']==3:
-        self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='green', outline='black', tags=node)
-    else:
-        self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='red', outline='black', tags=node)
-
-#Est une sous-fonction de "boite"
 #Dessine le rond du pointeur "pB" du nœud "node" quand ce nœud est sous forme agrandie
 def DrawPointeur(self, node, pB):
     xLeft = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['pointeur'][pB]['pSize'][0]+2
@@ -170,15 +200,47 @@ def DrawPointeur(self, node, pB):
         self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='green', outline='black', tags=node)
     else:
         self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='red', outline='black', tags=node)
+        
+def changeReducPointOrange(self, node):
+    xLeft = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding+2
+    xRigh = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height+(self.line_height/2)+self.padding-2
+    yTop = self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]-(self.line_height/2)+2
+    yDown = self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]+(self.line_height/2)-2
+    self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='orange', outline='black', tags=node)
+    
 
 #Dessine une arête
 def line(self,node1,node2,pB):
-    start_pos = None
+    if self.G.nodes[node1]['pos'] ==None or self.G.nodes[node2]['pos'] ==None:
+        return
+    start_posX = None
+    start_posY = None
     if self.G.nodes[node1]['reduced']==0:
-        start_pos = (self.G.nodes[node1]['pos'][0] + (self.G.nodes[node1]['pointeur'][pB]['pSize'][0] + self.G.nodes[node1]['pointeur'][pB]['pSize'][2])/2, self.G.nodes[node1]['pos'][1] + (self.G.nodes[node1]['pointeur'][pB]['pSize'][1]+self.G.nodes[node1]['pointeur'][pB]['pSize'][3])/2) 
+        start_posX = self.G.nodes[node1]['pos'][0] + (self.G.nodes[node1]['pointeur'][pB]['pSize'][0] + self.G.nodes[node1]['pointeur'][pB]['pSize'][2])/2
+        start_posY = self.G.nodes[node1]['pos'][1] + (self.G.nodes[node1]['pointeur'][pB]['pSize'][1]+self.G.nodes[node1]['pointeur'][pB]['pSize'][3])/2
     else:
-        start_pos = (self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['reduc'][0] + self.line_height + self.padding, self.G.nodes[node1]['pos'][1]+self.G.nodes[node1]['reduc'][1])                 
-    end_pos = (self.G.nodes[node2]['pos'][0], self.G.nodes[node2]['pos'][1] + self.G.nodes[node2]['taille'][1]/2)
+        start_posX = self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['reduc'][0] + self.line_height + self.padding
+        start_posY = self.G.nodes[node1]['pos'][1]+self.G.nodes[node1]['reduc'][1]
+    start_pos = (start_posX, start_posY)
+    
+                 
+    end_posX = None
+    end_posY = None
+    if (start_posX<self.G.nodes[node2]['pos'][0]):
+        end_posX = self.G.nodes[node2]['pos'][0]
+    elif (start_posX>self.G.nodes[node2]['pos'][0]+self.G.nodes[node2]['taille'][0]):
+        end_posX = self.G.nodes[node2]['pos'][0]+self.G.nodes[node2]['taille'][0]
+    else:
+        end_posX = start_posX
+    if (start_posY<self.G.nodes[node2]['pos'][1]):
+        end_posY=self.G.nodes[node2]['pos'][1]
+    elif (start_posY>self.G.nodes[node2]['pos'][1]+self.G.nodes[node2]['taille'][1]):
+        end_posY = self.G.nodes[node2]['pos'][1]+self.G.nodes[node2]['taille'][1]
+    else:
+        end_posY = start_posY
+    if end_posX == start_posX and end_posY == start_posY:
+        end_posX = start_posX-1
+    end_pos = (end_posX, end_posY)
     self.canvas.create_line(start_pos, end_pos, arrow=tk.LAST, arrowshape=(10, 12, 5), width=2)
         
 def getX(self, x):
