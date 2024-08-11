@@ -437,7 +437,7 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
                         self.var_to_request["children"][node_id]["..."] = None
                         self.obj_len[node_id] = i
                         break
-                    if ('<built-in method' not in attributes[attr].repr):
+                    if (self.expert_mode>=2 or '<built-in method' not in attributes[attr].repr):
                         self.var_to_request["children"][node_id][attr] = ValueInfo(attributes[attr].id, attributes[attr].repr)
                         i+=1
             else:

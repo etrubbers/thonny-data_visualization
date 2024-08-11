@@ -7,7 +7,7 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="thonny-data_visualization",
-    version="1.9.1",
+    version="1.3.0",
     description="A Thonny plug-in to visualize your data",
     long_description=long_description,
     long_description_content_type="text/markdown",
