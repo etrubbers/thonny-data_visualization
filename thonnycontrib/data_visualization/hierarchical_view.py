@@ -227,6 +227,8 @@ class HierarchicalView(ui_utils.TreeFrame):
 
                 if (self.tree.set(self.parent_id, "id") == "Globals" or self.tree.set(self.parent_id, "id") == "Locals"):
                     self.repr_db[object_infos["repr"]] = s + " (" + str(name) + ")"
+                else:
+                    self.repr_db[object_infos["repr"]] = s
 
             if (len(s) > 200):
                 s = s[:75] + " ... " + s[-75:]
