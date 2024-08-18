@@ -200,7 +200,9 @@ def DrawPointeur(self, node, pB):
         self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='green', outline='black', tags=node)
     else:
         self.canvas.create_oval(xLeft, yTop, xRigh, yDown,fill='red', outline='black', tags=node)
-        
+
+#Fonction appelée lors de l'ouverture des références d'un nœud a l'état réduit avant les appel mémoire
+#dessine la pastille de couleur en orange
 def changeReducPointOrange(self, node):
     xLeft = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding+2
     xRigh = self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height+(self.line_height/2)+self.padding-2
@@ -222,7 +224,18 @@ def line(self,node1,node2,pB):
         start_posX = self.G.nodes[node1]['pos'][0] + self.G.nodes[node1]['reduc'][0] + self.line_height + self.padding
         start_posY = self.G.nodes[node1]['pos'][1]+self.G.nodes[node1]['reduc'][1]
     start_pos = (start_posX, start_posY)
-    
+    if node1==node2:
+        
+        x1, y1 = start_pos
+        x2 = self.G.nodes[node2]['pos'][0]+self.G.nodes[node2]['taille'][0]
+        y2 = y1-self.line_height/2+2
+        
+        control_point1 = (x1+self.line_height, y1+(self.line_height/4)*3)
+        control_point2 = (x2 + (self.line_height/4)*5, y1)
+
+        # Dessiner la courbe avec la flèche
+        self.canvas.create_line(x1, y1,control_point1[0], control_point1[1],control_point2[0], control_point2[1],x2, y2, smooth=True, width=2, arrow=tk.LAST,fill='black', arrowshape=(10, 12, 5))
+        return
                  
     end_posX = None
     end_posY = None
@@ -241,7 +254,8 @@ def line(self,node1,node2,pB):
     if end_posX == start_posX and end_posY == start_posY:
         end_posX = start_posX-1
     end_pos = (end_posX, end_posY)
-    self.canvas.create_line(start_pos, end_pos, arrow=tk.LAST, arrowshape=(10, 12, 5), width=2)
+    
+    self.canvas.create_line(start_pos, end_pos, arrow=tk.LAST, arrowshape=(10, 12, 5),fill='black', width=2)
         
 def getX(self, x):
     return self.canvas.canvasx(x)

@@ -171,7 +171,6 @@ class HierarchicalView(ui_utils.TreeFrame):
 
                 if (self.lazy_id is not None): # Si le but était de développer un objet existant alors nous passons directement à la fonction "extend"
                     if (self.object_name == "next"):
-                        print(self.obj_len[self.lazy_id])
                         self.extend(object_infos, self.lazy_id, self.obj_len[self.lazy_id])
                     else :    
                         self.extend(object_infos, self.lazy_id)

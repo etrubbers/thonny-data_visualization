@@ -108,32 +108,42 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         DB.draw_graph(self)
         self.selected_button_extReduc.set(2)
         self.update_button_states()
-        
+    
+    #entre le bouton "extend" et le bouton "reduce", dessine le bouton qui a été sélectionné, dans l'état pressé 
+    #et s'assure que l'autre bouton soit dans l'état non-pressé
     def update_button_states(self):
         # Update the relief of buttons based on selected_button_extReduc
         buttonextend_relief = tk.SUNKEN if self.selected_button_extReduc.get() == 1 else tk.RAISED
         buttonreduc_relief = tk.SUNKEN if self.selected_button_extReduc.get() == 2 else tk.RAISED
         self.extendButton.config(relief=buttonextend_relief)
         self.ReducButton.config(relief=buttonreduc_relief)
-        
+    
+    #definit l'action pour le bouton "recenter", à savoir recentrer et réordonner tout les nœuds affichés
     def on_RecenteredButton_click(self):
         DB.reCentrer(self)
-        
+    
+    #definit l'action pour le bouton "expert", à savoir changé l'état de
+    #"expert" vers "restart to get beginner",
+    #"restart to get beginner" vers "expert",
+    #"beginner" vers "restart to get expert" ou
+    #"restart to get expert" vers "beginner",
     def on_ExpertButton_click(self):
-        if self.expert_mode == 0 :
+        if self.expert_mode == 0 : #"beginner" vers "restart to get expert"
             self.expert_mode = 1
             self.ExpertButton.config(text=self.rstComplex, relief=tk.SUNKEN)
-        elif self.expert_mode ==1:
+        elif self.expert_mode ==1: #"restart to get expert" vers "beginner"
             self.expert_mode = 0
             self.ExpertButton.config(text=self.getComplex, relief=tk.RAISED)
-        elif self.expert_mode ==2:
+        elif self.expert_mode ==2: #"expert" vers "restart to get beginner"
             self.expert_mode=3
             self.ExpertButton.config(text=self.rstSimple, relief=tk.SUNKEN)
-        else:
+        else: #"restart to get beginner" vers "expert"
             self.expert_mode=2
             self.ExpertButton.config(text=self.getSimple, relief=tk.RAISED)
 
-
+    #fonction appelée au redémarrage: est appelée lorsque l'utilisateur exécute le script courant, commence à déboguer le script courant ou arrête l'interpréteur
+    #vide le diagramme réseau et toutes les données dessus en mémoire
+    #change le mode expert/beginner si besoin : si dans l'état "restart to get beginner" alors "beginner"  et  si dans l'état "restart to get expert" alors "expert"
     def _on_backend_restart(self, event=None):
         if self.expert_mode==1:
             self.expert_mode=2
@@ -158,45 +168,48 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.edgeCreated=set()
         self._last_progress_message = None
 
-    
+    #Fonction appelée lorsque l'utilisateur clique dans le caneva:
     def on_node_click(self, event):
-        # Check if clicked on a node
+        # Check si le clique est sur un nœud
         node = DB.getClickedNode(self, event)
         if node is not None:
-            # Store the clicked node and its offset
             self.selected_node = node
             self.offset = DB.getOffset(self, event, node)
-            if DB.isCliqueOnReduc(self, event.x, event.y, node):
+            if DB.isCliqueOnReduc(self, event.x, event.y, node): #Check si le clique est sur le bouton "extend/reduce" du nœud sélectionné
                 DB.changeReduc(self, node)
                 DB.draw_graph(self)
-            elif DB.isCliqueOnReducPointeur(self, event.x, event.y, node):
-                self.extendLazyReduc(node)
-            elif not DB.isReduced(self,node):
-                if DB.isCliqueOnSeeMore(self, event, node):
+            elif DB.isReduced(self,node):
+                if DB.isCliqueOnReducPointeur(self, event.x, event.y, node): #Check si le nœud est dans l'état réduit avec une pastille de couleur et que le clique est sur cette pastille
+                    self.extendLazyReduc(node)
+            else:
+                if DB.isCliqueOnSeeMore(self, event, node): #Check si le clique est sur un éventuel "click here to see more"
                     self.clickToSeeMore=True
                     self.G.nodes[node]['contenue'] = self.G.nodes[node]['contenue'][:-23]
                     self.var_to_request['lazy']["next"] = ValueInfo(node, "next")
                     self.lazy_id = node
                     self.send_request()
                 else :
-                    for pB in range(DB.getLenPointeur(self, node)):
+                    for pB in range(DB.getLenPointeur(self, node)): #Check pour chaque pastille de couleur du nœud si le clique se trouve dessus ou pas
                         if DB.isCliqueOnPointeur(self, event.x, event.y, node, pB):
                             if DB.isPointeurOpen(self, node, pB):
                                 DB.changePointeur(self, node, pB)
                                 DB.draw_graph(self)
                             else:
-                                #DB.changePointeur(self, node, pB)
                                 self.extendLazy(self.tree_db[DB.getPointeurId(self, node, pB)][0], DB.getPoiteurName(self, node, pB),self.tree_db[DB.getPointeurId(self, node, pB)][1], node, pB)
+                            break
                     
-
+    #Bouge le nœud sélectionné (s'il y en a un) vers la position de la souris
     def on_node_drag(self, event):
-        # Move the selected node to the mouse position
         DB.moveNode(self, event, self.selected_node, self.offset)
 
+    #Fonction appelée lorsque l'utilisateur exécute le script courant ou arrête l'interpréteur
+    #Il n'y a donc pas de variable local, et il faut aller regarder toutes les variables globales
     def _handle_toplevel_response(self, event):
         if "globals" in event and event["globals"]:
             self.update(event["globals"])
-        
+    
+    #Fonction appelée à chaque étape du parcours du code de l'utilisateur via le débogueur
+    #Il faut aller observer les variables globales et locales
     def _debugger_response(self, event):
         self._last_progress_message = event
         frame_info=None
@@ -210,6 +223,8 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
             raise ValueError("Could not find frame %d" % event.stack[-1].id)
         self.update(frame_info.globals, frame_info.locals)
     
+    #Fonction appelée lors d'une série d'appels mémoire via l'exécute le script courant, le parcours du script courant avec le débogueur
+    #Cela va faire un appel mémoire pour chacune des variables globales et locales, mais avant, il faut vider toutes les variables nécessaires pour cette série d'appels
     def update(self, globals_, locals_ = None):
         
         self.nodeCreated={}
@@ -225,7 +240,6 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
         self.extendeRequestReduc=None
         self.tree_db = {}
         self.repr_db = {}
-        #self.type_db = {}
         l = []
 
         globalst = None
@@ -241,6 +255,9 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
 
         self.send_request()
     
+    #Vérifié s'il y a encore des appels à faire
+    #Si non, agir en conséquence
+    #Si oui, lancer l'appel mémoire suivant
     def send_request(self):
         if not self.var_to_request["globals"] and not self.var_to_request["locals"] and not self.var_to_request["children"] and not self.var_to_request["lazy"]:
             self.var_to_request["globals"] = {}
@@ -330,11 +347,10 @@ class GraphicalView(tk.Frame, ui_utils.TreeFrame):
 
         rep = object_infos['repr']
 
-        if tp in builtin_data_struct:# or tp == "<class 'method'>":
-            #print(rep)
+        if tp in builtin_data_struct:
             rep = object_infos['full_type_name']
         
-        s, at_bool, homemade = repr_format(self, rep)
+        s, _, homemade = repr_format(self, rep)
             
         if (tp not in builtin_types or tp in builtin_data_struct):
             

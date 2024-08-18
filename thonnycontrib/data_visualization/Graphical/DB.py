@@ -121,7 +121,9 @@ def changeReducPointeur(self, node):
         self.G.nodes[node]['reduced'] = 4
         for pB in range(len(self.G.nodes[node]['pointeur'])):
             self.G.nodes[node]['pointeur'][pB]['visible']=False
-            
+
+#Fonction appelée lors de l'ouverture des références d'un nœud a l'état réduit avant les appel mémoire
+#Fixe le node dans l'état réduit avec des pointeurs à l’état ouvert et fermé et dessine la pastille de couleur en orange
 def changeReducPointOrange(self, node):
     self.G.nodes[node]['reduced']=2
     graphic.changeReducPointOrange(self, node)
@@ -209,7 +211,7 @@ def moveNode(self, event, node, offset):
         self.G.nodes[node]['pos'] = (new_x, new_y)
         draw_graph(self)
 
-#Est appelé quand un nouveau nœud est créé et doit être affiché, il vient du pointeur "pB" du nœud "node"
+#Est appelée quand un nouveau nœud est créé et doit être affiché, il vient du pointeur "pB" du nœud "node"
 #Affiche l’arête du nœud parent "node" vers le nouveau nœud, le nouveau nœud et tous les nœuds/arêtes suivants qui devraient être visibles
 def showNodeEdge(self, node, pB, FromExtend = True):
     self.G.nodes[node]['pointeur'][pB]['visible'] = not self.G.nodes[node]['pointeur'][pB]['visible']
@@ -250,38 +252,21 @@ def showIter(self, node1, node2, pB):
                         showIter(self, node2, edge[1], i)
                         break
 
-#Est utilisé quand il faut recentrer ou qu'un nœud n'a pas encore de position, permet de trouver le "YDown+15" le plus bas parmi tous les nœuds enfant visibles de "node"
-#Retourne un Y = YUp du nœud node si node n'a pas de nœud enfant affiché
-def findNewY(self,node):
-    maxY= self.G.nodes[node]['pos'][1]
-    for i in range(len(self.G.nodes[node]['pointeur'])):
-        if self.G.nodes[node]['pointeur'][i]['visible']:
-            for edge in self.G.out_edges(node):
-                if self.G.nodes[node]['pointeur'][i]['name'] in self.G.edges[edge]['start']:
-                    if self.G.nodes[edge[1]]['visible']:
-                        if self.G.nodes[edge[1]]['pos'][1] + self.G.nodes[edge[1]]['taille'][1]+15>maxY:
-                            maxY=self.G.nodes[edge[1]]['pos'][1] + self.G.nodes[edge[1]]['taille'][1]+15
-                    break
-    return maxY
-
+#Vérifie si deux rectangles se chevauchent.
+#retourne 2 si rect et newNode se chevauchent
+#retourne 1 si rect et newNode ne se chevauchent pas mais rect se trouve en dessous de newNode, donc si newNode doit être dépassé à cause d'un autre nœud rect devra être revérifié
+#retourne 0 si rect et newNode ne se chevauchent pas et ne se chevaucheront pas même si newNode doit être repositionné à cause d'un autre nœud
 def rectangles_overlap(self, rect, newNode):
-    """
-    Vérifie si deux rectangles se chevauchent.
-    Chaque rectangle est défini par (XGauche, YTop, XRight, YDown).
-    """
     if self.G.nodes[rect]['pos'][0]+self.G.nodes[rect]['taille'][0]+self.padding <= self.G.nodes[newNode]['pos'][0] or self.G.nodes[newNode]['pos'][0]+self.G.nodes[newNode]['taille'][0]+self.padding <= self.G.nodes[rect]['pos'][0] or self.G.nodes[rect]['pos'][1]+self.G.nodes[rect]['taille'][1]+self.padding <= self.G.nodes[newNode]['pos'][1]:
         return 0
     if self.G.nodes[newNode]['pos'][1]+self.G.nodes[newNode]['taille'][1]+self.padding <= self.G.nodes[rect]['pos'][1]:
         return 1
     return 2
 
+#Trouve la première position libre en dessous de la position initiale où le nouveau rectangle "new_rect" ne chevauche aucun rectangle existant
 def find_non_overlapping_position(self, new_rect):
-    """
-    Trouve la première position libre en dessous de la position initiale où le nouveau rectangle
-    ne chevauche aucun rectangle existant.
-    """
     li = list(self.G.nodes())
-    li.remove(new_rect)
+    li.remove(new_rect) # contient tout les nœuds qui doivent être vérifiés car ils pourraient chevaucher new_rect
     li2=[]
     isOverlap=False
     while(True):
@@ -292,14 +277,14 @@ def find_non_overlapping_position(self, new_rect):
             if self.G.nodes[node]['pos']==None:
                 continue
             overLap = rectangles_overlap(self, node, new_rect)
-            if overLap==1:
+            if overLap==1: #node ne chevauche pas new_rect mais pourrais le faire si un autre nœud le fait, donc il faut garder ce nœud en mémoire pour une potentiel futur itération de la boucle while
                 li2.append(node)
-            elif overLap==2:
+            elif overLap==2: #node chevauche new_rect, donc repositionner new_rect en dessous de node, gardé en mémoire tout les nœud qui n'ont pas encore été vérifié et lancer une nouvelle itération de while
                 self.G.nodes[new_rect]['pos']= (self.G.nodes[new_rect]['pos'][0], self.G.nodes[node]['pos'][1]+self.G.nodes[node]['taille'][1]+self.padding)
                 li2=li2+li[li.index(node) + 1:]
                 isOverlap=True
                 break
-        if isOverlap==False:
+        if isOverlap==False: #la position de tout les nœuds à eté comparé à la position trouvé pour new_rect et aucun ne chevauche
             return self.G.nodes[new_rect]['pos'][1]+self.G.nodes[new_rect]['taille'][1]
         li=li2
         li2=[]
@@ -332,7 +317,6 @@ def isCliqueOnReducPointeur(self, x, y, node):
     return self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding <= graphic.getX(self, x) <= self.G.nodes[node]['pos'][0] + self.G.nodes[node]['reduc'][0]+self.line_height/2+self.padding+self.line_height and self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]-self.line_height/2 <= graphic.getY(self, y) <= self.G.nodes[node]['pos'][1] + self.G.nodes[node]['reduc'][1]+self.line_height/2
 
 def isCliqueOnSeeMore(self, event, node):
-    # Exemple de chaîne de caractères
     parts = self.G.nodes[node]['contenue'].rsplit('\n', 1)
     if len(parts)>1:
         if parts[1]==self.sentenceSeeMore100:
