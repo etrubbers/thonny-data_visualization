@@ -30,6 +30,14 @@ You need to restart Thonny for the functions to be displayed. To do this, simply
 
 ## Using the globals and locals variables view
 
+### In short :
+
+1. In the View section, select Globals and locals variables
+2. Run or debug your program to see your variables
+3. Open the object inspector and see the details of your variables
+
+### In details :
+
 1. To display the local and global variables view, go to the ‘Views’ tab at the top left and select the ‘Globals and locals variables’ view. A new window will open on the right showing the global and local variables.
 
     <p align="center">
